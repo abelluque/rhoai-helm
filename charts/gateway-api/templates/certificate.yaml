@@ -4,6 +4,8 @@
 {{- if and $listener.tls $cert.create }}
 {{- $secretName := default (index (first $listener.tls.certificateRefs) "name") $cert.secretName -}}
 {{- $gwNs := default $.Release.Namespace $gw.namespace -}}
+{{- $hostname := tpl $listener.hostname $ -}}
+{{- $commonName := default $hostname $cert.commonName -}}
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
@@ -23,13 +25,11 @@ spec:
   issuerRef:
     {{- required (printf "gateways.%s.listeners.%s.certificate.issuerRef is required when certificate.create is true" $name $lname) $cert.issuerRef | toYaml | nindent 4 }}
   dnsNames:
-    - {{ tpl $listener.hostname $ | quote }}
+    - {{ $hostname | quote }}
     {{- range $cert.dnsNames }}
     - {{ tpl . $ | quote }}
     {{- end }}
-  {{- with $cert.commonName }}
-  commonName: {{ tpl . $ | quote }}
-  {{- end }}
+  commonName: {{ tpl $commonName $ | quote }}
   {{- with $cert.duration }}
   duration: {{ . | quote }}
   {{- end }}

@@ -196,6 +196,7 @@ gateways:
         certificate:
           create: true
           secretName: maas-default-gateway-venafi-tls
+          duration: 17520h
           issuerRef:
             group: cert-manager.io
             kind: ClusterIssuer
@@ -207,16 +208,22 @@ gateways:
               name: maas-default-gateway-venafi-tls
 ```
 
-Chart defaults use `certificate.create: false` and reference `maas-default-gateway-venafi-tls` so clusters without Venafi are unaffected. Optional Venafi fields (`duration`, `renewBefore`, `dnsNames`, `subject`, etc.) are supported under `listeners.https.certificate` — see `charts/gateway-api/values.yaml`.
+`commonName` defaults to the gateway hostname in the Certificate template. Venafi `venafi-tpp-approver-policy` requires `duration: 17520h` (2 years) — set this in cluster values when using that policy.
+
+Chart defaults use `certificate.create: false` and reference `maas-default-gateway-venafi-tls` so clusters without Venafi are unaffected. Optional Venafi fields (`renewBefore`, `dnsNames`, `subject`, etc.) are supported under `listeners.https.certificate` — see `charts/gateway-api/values.yaml`.
 
 **Verify after Wave 3:**
 
 ```bash
 oc get clusterissuer venafi-tpp-cluster-issuer
 oc get certificate maas-default-gateway-venafi-tls -n openshift-ingress
+oc describe certificate maas-default-gateway-venafi-tls -n openshift-ingress
+oc get certificaterequest -n openshift-ingress
 oc get secret maas-default-gateway-venafi-tls -n openshift-ingress
 oc get gateway maas-default-gateway -n openshift-ingress
 ```
+
+If the Certificate is not `Ready`, check `oc describe certificate` for Venafi policy errors (e.g. missing `commonName` or wrong `duration`).
 
 **Migration:** If a previous install used `cert-manager-ingress-cert`, delete the old resources before upgrading:
 

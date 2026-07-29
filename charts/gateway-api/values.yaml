@@ -55,8 +55,8 @@ gateways:
             kind: ClusterIssuer
             name: venafi-tpp-cluster-issuer
           dnsNames: []
-          commonName: ""
-          duration: ""
+          commonName: ""  # defaults to listener hostname when empty
+          duration: ""    # Venafi TPP policy may require exactly 17520h (2 years)
           renewBefore: ""
           usages: []
           subject: {}

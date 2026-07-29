@@ -8,6 +8,7 @@ gateways:
         certificate:
           create: true
           secretName: maas-default-gateway-venafi-tls
+          duration: 17520h
           issuerRef:
             group: cert-manager.io
             kind: ClusterIssuer
