@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Waves 1–5: operators, GPU, Connectivity Link, SM3, gateway, Postgres wiring, OpenShift AI / MaaS.
+# Waves 1–5: operators, GPU, Connectivity Link, Gateway API, Postgres wiring, OpenShift AI / MaaS.
 set -euo pipefail
 # shellcheck source=common.sh
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
@@ -10,7 +10,7 @@ warn_if_wrong_cluster
 cd "${ROOT}"
 
 echo "Updating Helm chart dependencies..."
-for c in cert-manager nvidia-gpu-enablement rhcl leaderworkerset openshift-ai observability-operators service-mesh-operators platform-addons; do
+for c in cert-manager nvidia-gpu-enablement rhcl leaderworkerset openshift-ai observability-operators platform-addons; do
   (cd "${CHARTS}/${c}" && helm dependency update)
 done
 
@@ -55,13 +55,16 @@ for n in d.get("items",[]):
 print("TOTAL_GPUS", total)
 '
 
-echo "== Wave 3: Service Mesh 3 + Gateway API =="
-helm upgrade --install service-mesh-operators "${CHARTS}/service-mesh-operators" -n openshift-operators \
-  -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/service-mesh-operators/values.yaml"
-./clusters/ocpai-prd-mtz/scripts/approve-installplans.sh openshift-operators || true
-wait_csv openshift-operators 'servicemeshoperator3' 900
+echo "== Wave 3: Gateway API (Ingress Operator on OpenShift 4.22) =="
+# charts/service-mesh-operators is legacy reference only — do not helm-install it.
+# OCP 4.22 Ingress Operator vendors Gateway API CRDs. Creating GatewayClass
+# openshift-default (controllerName: openshift.io/gateway-controller/v1) deploys
+# a lightweight Istio control plane in openshift-ingress. A second
+# servicemeshoperator3 CSV via OLM can conflict (duplicate Istio CRDs / two
+# controllers). See charts/service-mesh-operators/README.md.
 helm upgrade --install gateway-api "${CHARTS}/gateway-api" -n openshift-ingress \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/gateway-api/values.yaml"
+oc get gatewayclass openshift-default || true
 oc get gateway maas-default-gateway -n openshift-ingress || true
 
 echo "== Wave 4: MaaS Postgres wiring (external secret only) =="

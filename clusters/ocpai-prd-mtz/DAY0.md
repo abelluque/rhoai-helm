@@ -40,7 +40,7 @@ export PLATFORM_NODES="infra-1 infra-2 infra-3 worker-vm-1 worker-vm-2 worker-vm
 - `oc adm taint node <gpu> nvidia.com/gpu=true:NoSchedule --overwrite`
 - `oc label node <gpu> nvidia.com/gpu.present=true --overwrite`
 
-Do not run inference on masters. GPU Operator DaemonSets tolerate the GPU taint; RHOAI/GitOps/Pipelines/SM/RHCL/Authorino do not, so they stay on VMs.
+Do not run inference on masters. GPU Operator DaemonSets tolerate the GPU taint; RHOAI/GitOps/Pipelines/RHCL/Authorino do not, so they stay on VMs.
 
 After wave 2, each SuperMicro must show `nvidia.com/gpu: 6` Allocatable.
 
@@ -57,9 +57,10 @@ Subscriptions / operators this overlay expects:
 - Red Hat OpenShift AI 3.4 (`rhods-operator` channel `stable-3.x`) including **Model Registry**
 - OpenShift GitOps and OpenShift Pipelines (wave 1 `platform-addons`)
 - Red Hat Connectivity Link
-- OpenShift Service Mesh 3 (`servicemeshoperator3.v3.3.3` pin)
 - NVIDIA GPU Operator certified + Node Feature Discovery
 - cert-manager (installed in wave 1 unless you disable it)
+
+Do **not** subscribe to OpenShift Service Mesh 3 and do **not** install `charts/service-mesh-operators`. That chart is **legacy reference only** (the old `servicemeshoperator3.v3.3.3` pin for pre-4.19 / OpenTLC labs). This cluster is OpenShift **4.22**: Gateway API CRDs ship with the Ingress Operator, and creating `GatewayClass` `openshift-default` (`controllerName: openshift.io/gateway-controller/v1`) provisions the lightweight Istio control plane in `openshift-ingress`. A second SM3 operator via OLM can conflict with that managed control plane (duplicate Istio CRDs / two controllers). See [INSTALL.md](INSTALL.md#4-wave-3--gateway-api-ingress-operator-openshift-422) and [charts/service-mesh-operators/README.md](../../charts/service-mesh-operators/README.md).
 
 Charts use `installPlanApproval: Manual`. After each operator Subscription appears, approve InstallPlans:
 

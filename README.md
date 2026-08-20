@@ -7,15 +7,16 @@ The existing Kustomize tree at `[rhoai-3_4/](../rhoai-3_4/)` and `[bootstrap.sh]
 ## Directory Layout
 
 ```bash
-rhoai-3_4-helm/
+rhoai-helm/
 ├── charts/                         # Reusable Helm charts
-├── clusters/                       # Per-cluster values
-│   └── example.cluster.opentlc.com/
-│       ├── cluster.yaml            # Global cluster name/domain/toolsImage
-│       ├── platform/values/{app}/  # Platform chart overrides (waves 1–5)
-│       └── values/{app}/           # Workload chart overrides (waves 6–7)
-└── HELM.md
+└── clusters/
+    └── ocpai-prd-mtz/              # Production overlay (OpenShift 4.22)
+        ├── cluster.yaml            # Global cluster name/domain/toolsImage
+        ├── platform/values/{app}/  # Platform chart overrides (waves 1–5)
+        └── values/{app}/           # Workload chart overrides (waves 6–7)
 ```
+
+This fork targets a single cluster. Install steps for **ocpai-prd-mtz** are in [clusters/ocpai-prd-mtz/README.md](clusters/ocpai-prd-mtz/README.md).
 
 **Model name contract:** keys in `llmisvc` `models:` must match names in `maas-subscriptions` `modelRefs`, `subscriptions`, and `authPolicies`.
 
@@ -25,11 +26,11 @@ rhoai-3_4-helm/
 | ---- | ------------------------- | ------------------------------------------------------------------------ |
 | 1    | `cert-manager`            | cert-manager operator                                                    |
 | 1    | `observability-operators` | Tempo, Cluster Observability, OpenTelemetry operators                    |
+| 1    | `platform-addons`         | GitOps, Pipelines, Nutanix Files SC, Model Registry PVCs (ocpai overlay) |
 | 2    | `nvidia-gpu-enablement`   | NFD + NVIDIA GPU operator; instances via post-install Jobs               |
 | 2    | `leaderworkerset`         | Leader Worker Set operator; instance via post-install Job                |
 | 2    | `rhcl`                    | Red Hat Connectivity Link operator; Kuadrant via post-install Job        |
-| 3    | `service-mesh-operators`  | OpenShift Service Mesh 3 operator (pinned `servicemeshoperator3.v3.3.3`) |
-| 3    | `gateway-api`             | GatewayClass + maas-default-gateway                                      |
+| 3    | `gateway-api`             | GatewayClass + maas-default-gateway (Ingress Operator on OCP 4.22)       |
 | 4    | `maas-postgres`           | Optional in-cluster Postgres + `maas-db-config` for MaaS API             |
 | 5    | `openshift-ai`            | RHOAI operator; DSC/DSCI and dashboard config via post-install Jobs      |
 | 6    | `llmisvc`                 | LLMInferenceService models                                               |
@@ -37,22 +38,14 @@ rhoai-3_4-helm/
 
 Wave 4 (`maas-postgres`) runs before wave 5 (`openshift-ai`) so the `maas-db-config` secret exists when the DataScienceCluster enables MaaS — see [Prerequisites for wave 5](#prerequisites-for-wave-5) below.
 
-### 1. Configure your cluster
+### 1. Configure the cluster overlay
 
-```bash
-cp -r clusters/example.cluster.opentlc.com clusters/mycluster.mydomain.com
-# Edit clusters/mycluster.mydomain.com/cluster.yaml:
-#   global.cluster.name
-#   global.cluster.baseDomain
-#   global.toolsImage
-```
-
-Edit platform overrides under `clusters/mycluster.mydomain.com/platform/values/` and workload overrides under `clusters/mycluster.mydomain.com/values/`.
+Edit `clusters/ocpai-prd-mtz/cluster.yaml` (`global.cluster.baseDomain`) plus platform overrides under `clusters/ocpai-prd-mtz/platform/values/` and workload overrides under `clusters/ocpai-prd-mtz/values/`. See [clusters/ocpai-prd-mtz/DAY0.md](clusters/ocpai-prd-mtz/DAY0.md).
 
 ### 2. Update chart dependencies
 
 ```bash
-for c in cert-manager nvidia-gpu-enablement rhcl leaderworkerset openshift-ai observability-operators service-mesh-operators; do
+for c in cert-manager nvidia-gpu-enablement rhcl leaderworkerset openshift-ai observability-operators platform-addons; do
   (cd charts/$c && helm dependency update)
 done
 ```
@@ -60,7 +53,7 @@ done
 ### 3. Install in wave order
 
 ```bash
-CLUSTER=clusters/example.cluster.opentlc.com
+CLUSTER=clusters/ocpai-prd-mtz
 CHARTS=charts
 
 # Wave 1 - optional when cert-manager/Venafi is pre-installed (see Venafi integration below)
@@ -79,9 +72,7 @@ helm upgrade --install leaderworkerset $CHARTS/leaderworkerset -n openshift-lws-
 helm upgrade --install rhcl $CHARTS/rhcl -n kuadrant-system --create-namespace \
   -f $CLUSTER/cluster.yaml -f $CLUSTER/platform/values/rhcl/values.yaml
 
-# Wave 3 (wait for servicemeshoperator3 CSV Succeeded before gateway-api)
-helm upgrade --install service-mesh-operators $CHARTS/service-mesh-operators -n openshift-operators \
-  -f $CLUSTER/cluster.yaml -f $CLUSTER/platform/values/service-mesh-operators/values.yaml
+# Wave 3 — Gateway API only. Do not install service-mesh-operators on OpenShift 4.22.
 helm upgrade --install gateway-api $CHARTS/gateway-api -n openshift-ingress \
   -f $CLUSTER/cluster.yaml -f $CLUSTER/platform/values/gateway-api/values.yaml
 
@@ -93,18 +84,15 @@ helm upgrade --install maas-postgres $CHARTS/maas-postgres -n redhat-ods-applica
 helm upgrade --install openshift-ai $CHARTS/openshift-ai -n redhat-ods-operator --create-namespace \
   -f $CLUSTER/cluster.yaml -f $CLUSTER/platform/values/openshift-ai/values.yaml
 
-# Waves 6–7 (workloads)
-helm upgrade --install llmisvc $CHARTS/llmisvc -n ai-models --create-namespace \
-  -f $CLUSTER/cluster.yaml -f $CLUSTER/values/llmisvc/values.yaml
+# Waves 6–7 (workloads) — three real GPU models, not the simulator map
+helm upgrade --install granite-3-0-8b-instruct $CHARTS/llmisvc -n ai-models --create-namespace \
+  -f $CLUSTER/cluster.yaml -f $CLUSTER/values/llmisvc/granite-3.0-8b-instruct.yaml
+helm upgrade --install qwen25-coder-32b $CHARTS/llmisvc -n ai-models --set namespace.create=false \
+  -f $CLUSTER/cluster.yaml -f $CLUSTER/values/llmisvc/qwen2.5-coder-32b.yaml
+helm upgrade --install deepseek-coder-33b $CHARTS/llmisvc -n ai-models --set namespace.create=false \
+  -f $CLUSTER/cluster.yaml -f $CLUSTER/values/llmisvc/deepseek-coder-33b.yaml
 helm upgrade --install maas-subscriptions $CHARTS/maas-subscriptions -n models-as-a-service --create-namespace \
   -f $CLUSTER/cluster.yaml -f $CLUSTER/values/maas-subscriptions/values.yaml
-
-# Wave 8 Optional - add additional Inference Servers to the `ai-models` namespace
-
-# Adds gpt-oss-20b
-helm upgrade --install llmisvc-gpt-oss-20b $CHARTS/llmisvc \
-  -n ai-models --set namespace.create=false \
-  -f $CLUSTER/cluster.yaml -f $CHARTS/llmisvc/gpt-oss-20b-maas.yaml
 
 
 
@@ -126,17 +114,26 @@ database Secret 'maas-db-config' not found in namespace 'redhat-ods-applications
 
 Before installing workload charts (waves 6–7), confirm:
 
-- [ ] `servicemeshoperator3.v3.3.3` CSV is `Succeeded` in `openshift-operators`
+- [ ] `GatewayClass` `openshift-default` is Accepted / ControllerInstalled / CRDsReady
 - [ ] `maas-default-gateway` is programmed in `openshift-ingress`
 - [ ] DataScienceCluster and RHOAI dashboard are ready
 - [ ] `maas-db-config` secret exists (from wave 4 in-cluster Postgres, external credentials, or day2 provisioning)
 - [ ] GPU nodes are labeled if deploying GPU models (`nvidia.com/gpu.present=true`)
 
-### Service Mesh 3 and OpenShift AI coexistence
+### Gateway API on OpenShift 4.22 (no Service Mesh 3 operator)
 
-Wave 3 installs the **Service Mesh 3 operator only** (`servicemeshoperator3.v3.3.3`) with a pinned CSV — independent of RHOAI's operator dependency chain. Wave 5 (`openshift-ai`) sets `serviceMesh.managementState: Removed` on the DSCInitialization so RHOAI does not auto-install or manage Service Mesh; MaaS and llm-d use Gateway API and RawDeployment instead. See [OpenShift AI + Service Mesh 3 on one cluster](https://developers.redhat.com/articles/2025/07/16/how-deploy-openshift-ai-service-mesh-3-one-cluster#testing_and_validation).
+`ocpai-prd-mtz` is OpenShift **4.22**. Wave 3 installs **only** `gateway-api`. Do **not** run `helm upgrade --install service-mesh-operators`.
 
-This chart does **not** deploy an `Istio` control plane or Kiali operator. Tempo and OpenTelemetry are installed in wave 1 (`observability-operators`). Deploy an `Istio` CR separately if your cluster requires an SM3 data plane beyond the operator subscription.
+**Why the SM3 operator is not installed**
+
+1. **Gateway API CRDs ship with the cluster.** From OpenShift 4.19 the Ingress Operator vendors and versions `gateway.networking.k8s.io`. On 4.22 that lifecycle stays with Ingress, not with a separate OLM operator.
+2. **Ingress Operator provisions the data plane.** Creating `GatewayClass` `openshift-default` with `controllerName: openshift.io/gateway-controller/v1` (chart `gateway-api`) makes Ingress install a lightweight Istio control plane, based on Red Hat OpenShift Service Mesh, in `openshift-ingress`. No `Istio` CR and no CSV `servicemeshoperator3` are required.
+3. **A second SM3 subscription conflicts.** `charts/service-mesh-operators` would subscribe `servicemeshoperator3.v3.3.3` via OLM. That operator also installs Istio CRDs and can claim Gateways. `GatewayClass` `CRDsReady` is true when Istio CRDs are managed by **either** the Ingress Operator **or** OLM — not both. Two control planes leave the gateway unprogrammed and can break Connectivity Link / MaaS.
+4. **The rest of the stack already targets Ingress Gateway API.** RHCL patches `ISTIO_GATEWAY_CONTROLLER_NAMES` to include `openshift.io/gateway-controller/v1`. `maas-default-gateway` uses `gatewayClassName: openshift-default`. Wave 5 sets `serviceMesh.managementState: Removed` on the DSCInitialization so RHOAI does not install Service Mesh 2. MaaS and llm-d use Gateway API and RawDeployment. Tempo and OpenTelemetry remain in wave 1 (`observability-operators`).
+
+**Why the chart is still in the repo**
+
+`charts/service-mesh-operators` is **legacy reference only**. It is not a cluster overlay, is not listed in install waves, and must not be applied on 4.22. It is kept so the previous OpenTLC / pre-4.19 path (pinned `servicemeshoperator3.v3.3.3`) remains readable. Details: [charts/service-mesh-operators/README.md](charts/service-mesh-operators/README.md).
 
 ## Value Layering
 
@@ -179,7 +176,7 @@ This enables:
 - `**rhcl**`: copies `pull-secret` to `wasm-plugin-pull-secret` and patches the operator subscription (`RELATED_IMAGE_WASMSHIM`, `PROTECTED_REGISTRY`) — bootstrap.sh step 11
 - `**gateway-api**`: creates `default-gateway-config` with `WASM_INSECURE_REGISTRIES` for the gateway istio-proxy
 
-Leave `disconnected.enabled: false` (default) on connected clusters such as OpenTLC sandboxes.
+Leave `disconnected.enabled: false` (default) on connected clusters such as `ocpai-prd-mtz`.
 
 ### Venafi / pre-installed cert-manager (optional)
 
@@ -303,7 +300,8 @@ Post-install Jobs use the cluster `toolsImage` (must include `oc` and `jq`) and 
 | Chart                                                                                                                                                   | Source                                                                              |
 | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `install-operators`, `cert-manager`, `nvidia-gpu-enablement`, `leaderworkerset`, `rhcl`, `gateway-api`, `openshift-ai`, `llmisvc`, `maas-subscriptions` | Adapted from [openshift-setup](https://github.com/jharmison-redhat/openshift-setup) |
-| `maas-postgres`, `observability-operators`, `service-mesh-operators`                                                                                    | Created from `[rhoai-3_4/](../rhoai-3_4/)` Kustomize manifests or repo additions    |
+| `maas-postgres`, `observability-operators`, `platform-addons`                                                                                           | Created from `[rhoai-3_4/](../rhoai-3_4/)` Kustomize manifests or repo additions    |
+| `service-mesh-operators`                                                                                                                                | **Legacy reference only** — do not install on OCP 4.22; see [chart README](charts/service-mesh-operators/README.md) |
 
 ## Validation
 
@@ -312,22 +310,20 @@ Compare Helm output against Kustomize for parity:
 ```bash
 # Gateway
 helm template test charts/gateway-api \
-  -f clusters/example.cluster.opentlc.com/cluster.yaml \
-  -f clusters/example.cluster.opentlc.com/platform/values/gateway-api/values.yaml \
+  -f clusters/ocpai-prd-mtz/cluster.yaml \
+  -f clusters/ocpai-prd-mtz/platform/values/gateway-api/values.yaml \
   | grep -A5 "kind: Gateway"
-
-kustomize build ../rhoai-3_4/overlays/03-gateway | grep -A5 "kind: Gateway"
 
 # Workload
 helm template test charts/llmisvc \
-  -f clusters/example.cluster.opentlc.com/cluster.yaml \
-  -f clusters/example.cluster.opentlc.com/values/llmisvc/values.yaml
+  -f clusters/ocpai-prd-mtz/cluster.yaml \
+  -f clusters/ocpai-prd-mtz/values/llmisvc/granite-3.0-8b-instruct.yaml
 ```
 
 Render a chart locally without installing:
 
 ```bash
-CLUSTER=clusters/example.cluster.opentlc.com
+CLUSTER=clusters/ocpai-prd-mtz
 
 helm template test charts/gateway-api \
   -f $CLUSTER/cluster.yaml \

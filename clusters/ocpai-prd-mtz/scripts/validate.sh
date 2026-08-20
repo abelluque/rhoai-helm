@@ -35,8 +35,10 @@ print("gpu_nodes", gpu_nodes, "total_gpus", total)
 sys.exit(0 if gpu_nodes >= 2 and total >= 12 else 1)
 ' || fail=1
 
-echo "== Gateway =="
+echo "== Gateway API (Ingress Operator) =="
+check "GatewayClass openshift-default" oc get gatewayclass openshift-default
 check "maas-default-gateway exists" oc get gateway maas-default-gateway -n openshift-ingress
+oc get gatewayclass openshift-default -o yaml | grep -E 'Accepted|ControllerInstalled|CRDsReady' || true
 oc get gateway maas-default-gateway -n openshift-ingress -o yaml | grep -E 'Programmed|Accepted|hostname' || true
 
 echo "== DataScienceCluster / MaaS DB =="

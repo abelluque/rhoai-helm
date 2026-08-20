@@ -7,7 +7,7 @@ Pasos exactos para instalar todos los charts del overlay en el cluster **ocpai-p
 | Rol | Cantidad | Tipo | vCPU / RAM (neto grupo) | Cargas |
 | --- | --- | --- | --- | --- |
 | Masters | 3 | VM | 30 vCPU / 180 Gi | Control plane. **No schedulable** |
-| Infra | 3 | VM | 42 vCPU / 180 Gi | Plataforma (RHOAI, GitOps, Pipelines, SM3, RHCL, Authorino, registry) |
+| Infra | 3 | VM | 42 vCPU / 180 Gi | Plataforma (RHOAI, GitOps, Pipelines, RHCL, Authorino, registry) |
 | Workers virt | 3 | VM | 33 vCPU / 90 Gi | Misma plataforma que infra |
 | Workers GPU | 2 | SuperMicro SYS-521GE-TNRT | 248 vCPU / 2968 Gi + 12× H200 | **Solo** inferencia LLM |
 
@@ -27,7 +27,6 @@ flowchart TB
     cm[cert_manager]
     obs[Observability]
     rhcl[Connectivity_Link]
-    sm3[ServiceMesh3]
     gw[maas_default_gateway]
     rhoai[OpenShift_AI]
     authorino[Authorino]
@@ -79,7 +78,6 @@ flowchart LR
     cl[rhcl]
   end
   subgraph wave3 [Wave3]
-    sm[service_mesh_operators]
     gtw[gateway_api]
   end
   subgraph wave4 [Wave4]
@@ -127,7 +125,7 @@ export HF_TOKEN='hf_...'
 
 ```bash
 for c in cert-manager nvidia-gpu-enablement rhcl leaderworkerset openshift-ai \
-         observability-operators service-mesh-operators platform-addons; do
+         observability-operators platform-addons; do
   (cd charts/$c && helm dependency update)
 done
 ```
@@ -188,21 +186,25 @@ helm upgrade --install rhcl charts/rhcl \
 
 Validar `nvidia.com/gpu: 6` en cada SuperMicro. Authorino y Kuadrant quedan en VMs (sin toleration GPU).
 
-## 4. Wave 3 — Service Mesh 3 y Gateway MaaS
+## 4. Wave 3 — Gateway API (Ingress Operator, OpenShift 4.22)
+
+**No** ejecutar `helm upgrade --install service-mesh-operators`. El chart `charts/service-mesh-operators` se conserva solo como **referencia legada** (cómo se pinneaba `servicemeshoperator3.v3.3.3` en sandboxes OpenTLC y en OpenShift anterior a 4.19). No hay values de overlay para él y `install-waves.sh` no lo instala. Ver [charts/service-mesh-operators/README.md](../../charts/service-mesh-operators/README.md).
+
+Por qué no se instala en este cluster (OpenShift **4.22**):
+
+1. Desde 4.19 el Ingress Operator publica y versiona las CRDs de Gateway API. En 4.22 ese ciclo de vida no depende de un operador OLM aparte.
+2. Al crear el `GatewayClass` `openshift-default` con `controllerName: openshift.io/gateway-controller/v1`, el Ingress Operator instala un control plane Istio ligero (basado en Service Mesh) en `openshift-ingress`. No hace falta un CR `Istio` ni la CSV `servicemeshoperator3`.
+3. Una segunda suscripción SM3 vía OLM instala las mismas CRDs Istio y puede reclamar los Gateways. `CRDsReady` del `GatewayClass` vale para **o** Ingress Operator **o** OLM; los dos a la vez dejan el gateway sin programar y pueden romper Connectivity Link / MaaS.
+4. RHCL ya incluye `openshift.io/gateway-controller/v1`. El `Gateway` MaaS usa esa clase. RHOAI deja `serviceMesh.managementState: Removed` para no instalar Service Mesh 2.
 
 ```bash
-helm upgrade --install service-mesh-operators charts/service-mesh-operators \
-  -n openshift-operators \
-  -f $CLUSTER/cluster.yaml \
-  -f $CLUSTER/platform/values/service-mesh-operators/values.yaml
-
-./clusters/ocpai-prd-mtz/scripts/approve-installplans.sh openshift-operators
-# Esperar CSV servicemeshoperator3.v3.3.3 Succeeded
-
 helm upgrade --install gateway-api charts/gateway-api \
   -n openshift-ingress \
   -f $CLUSTER/cluster.yaml \
   -f $CLUSTER/platform/values/gateway-api/values.yaml
+
+# GatewayClass Accepted + ControllerInstalled + CRDsReady
+oc get gatewayclass openshift-default -o yaml
 ```
 
 Ruta: `https://maas.apps.ocpai-prd-mtz.<baseDomain>`.

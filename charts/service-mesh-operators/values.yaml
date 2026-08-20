@@ -1,3 +1,12 @@
+# LEGACY REFERENCE ONLY.
+# Do not helm-install this chart on ocpai-prd-mtz (OpenShift 4.22).
+# Gateway API CRDs and the lightweight Istio control plane are provisioned by
+# the Ingress Operator when charts/gateway-api creates GatewayClass
+# openshift-default (controllerName: openshift.io/gateway-controller/v1).
+# A second servicemeshoperator3 subscription via OLM can conflict with that
+# managed control plane. This chart is kept so the old SM3 pin remains readable.
+# See charts/service-mesh-operators/README.md.
+
 global:
   toolsImage: image-registry.openshift-image-registry.svc:5000/openshift/tools:latest
 

@@ -1,3 +1,0 @@
-# Skip operator install when cert-manager and Venafi are pre-installed on the cluster.
-install-cert-manager:
-  enabled: false

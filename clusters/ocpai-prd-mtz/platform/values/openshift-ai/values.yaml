@@ -19,7 +19,8 @@ dataScienceCluster:
 
 defaultWorkbenchPvcSize: 20Gi
 
-# SM3 is installed in wave 3. RHOAI must not manage Service Mesh 2.
+# OpenShift 4.22 Ingress Operator owns Gateway API / lightweight Istio.
+# RHOAI must not install or manage Service Mesh 2.
 dataScienceClusterInitialization:
   applicationsNamespace: redhat-ods-applications
   serviceMesh:

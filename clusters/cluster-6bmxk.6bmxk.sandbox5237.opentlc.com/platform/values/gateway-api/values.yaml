@@ -1,7 +1,0 @@
-gateways:
-  maas-default-gateway:
-    listeners:
-      http:
-        hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
-      https:
-        hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"

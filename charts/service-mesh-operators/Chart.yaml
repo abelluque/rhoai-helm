@@ -1,7 +1,7 @@
 ---
 apiVersion: v2
 name: service-mesh-operators
-description: OpenShift Service Mesh 3 operator subscription
+description: LEGACY REFERENCE ONLY — do not install on OpenShift 4.22. Gateway API is owned by the Ingress Operator; see charts/service-mesh-operators/README.md.
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
