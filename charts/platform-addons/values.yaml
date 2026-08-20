@@ -1,0 +1,110 @@
+# Shared scheduling: platform pods stay off SuperMicro GPU workers and masters.
+scheduling:
+  platform:
+    nodeSelector:
+      workload.rhoai.io/platform: "true"
+
+install-platform-operators:
+  enabled: true
+  operators:
+    openshift-gitops-operator:
+      channel: latest
+      installPlanApproval: Manual
+      namespace: openshift-gitops-operator
+      operatorGroup:
+        enabled: true
+    openshift-pipelines-operator-rh:
+      channel: latest
+      installPlanApproval: Manual
+      namespace: openshift-operators
+      operatorGroup:
+        enabled: false
+
+storage:
+  files:
+    create: true
+    name: nutanix-files-dynamic
+    provisioner: csi.nutanix.com
+    reclaimPolicy: Delete
+    volumeBindingMode: Immediate
+    allowVolumeExpansion: true
+    defaultClass: false
+    parameters:
+      dynamicProv: ENABLED
+      storageType: NutanixFiles
+      squashType: none
+      nfsServerName: CHANGE_ME
+      nfsServer: ""
+      csi.storage.k8s.io/provisioner-secret-name: ntnx-secret
+      csi.storage.k8s.io/provisioner-secret-namespace: openshift-cluster-csi-drivers
+  volumes:
+    create: false
+    name: nutanix-volumes
+    provisioner: csi.nutanix.com
+    reclaimPolicy: Delete
+    volumeBindingMode: WaitForFirstConsumer
+    allowVolumeExpansion: true
+    defaultClass: false
+    parameters:
+      storageType: NutanixVolumes
+      storageContainer: default
+      csi.storage.k8s.io/fstype: ext4
+      csi.storage.k8s.io/provisioner-secret-name: ntnx-secret
+      csi.storage.k8s.io/provisioner-secret-namespace: openshift-cluster-csi-drivers
+
+pvcs:
+  modelRegistryMysql:
+    create: true
+    name: model-registry-mysql-data
+    namespace: rhoai-model-registries
+    size: 20Gi
+    accessMode: ReadWriteOnce
+  modelRegistryMinio:
+    create: true
+    name: model-registry-minio-data
+    namespace: rhoai-model-registries
+    size: 200Gi
+    accessMode: ReadWriteMany
+  notebooksShared:
+    create: true
+    name: rhods-notebooks-shared
+    namespace: rhods-notebooks
+    size: 50Gi
+    accessMode: ReadWriteMany
+  pipelinesArtifacts:
+    create: true
+    name: pipelines-artifacts
+    namespace: openshift-pipelines
+    size: 100Gi
+    accessMode: ReadWriteMany
+
+modelRegistry:
+  enabled: true
+  createCR: false
+  namespace: rhoai-model-registries
+  name: rhoai-registry
+  mysql:
+    image: registry.redhat.io/rhel9/mysql-80:latest
+    database: modelregistry
+    user: mlmduser
+    rootPassword: CHANGE_ME
+    password: CHANGE_ME
+    existingSecret: ""
+  minio:
+    enabled: true
+    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
+    rootUser: minio
+    rootPassword: CHANGE_ME
+    existingSecret: ""
+
+gitops:
+  patchNodePlacement: true
+  argocdName: openshift-gitops
+  argocdNamespace: openshift-gitops
+
+pipelines:
+  patchNodePlacement: true
+  tektonConfigName: config
+
+global:
+  toolsImage: image-registry.openshift-image-registry.svc:5000/openshift/tools:latest

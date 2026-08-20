@@ -57,9 +57,13 @@ tolerations:
     effect: NoSchedule
     operator: Exists
 
+affinity: {}
+
 huggingface:
   downloadArgs: []
   token: ""
+  # Existing Secret in the release namespace with key HF_TOKEN (do not commit tokens).
+  existingSecret: ""
 
 modelType: generative
 enableAuth: true
@@ -79,6 +83,8 @@ dataScienceConnection:
 
 maas:
   enabled: false
+  # Set false when MaaSModelRef is owned by the maas-subscriptions chart.
+  createModelRef: true
   subjects:
     groups:
       - name: system:authenticated

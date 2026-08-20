@@ -1,0 +1,27 @@
+# External MaaS hostname: maas.apps.ocpai-prd-mtz.<baseDomain>
+# TLS: OpenShift Route (edge) using the cluster ingress cert. Plug a ClusterIssuer
+# into listeners.https.certificate if you need Gateway-native HTTPS instead.
+gateways:
+  maas-default-gateway:
+    listeners:
+      http:
+        hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
+      https:
+        hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
+        certificate:
+          create: false
+          secretName: maas-default-gateway-tls
+        tls:
+          certificateRefs:
+            - group: ""
+              kind: Secret
+              name: maas-default-gateway-tls
+
+route:
+  create: true
+  name: maas-default-gateway
+  timeout: 10m
+  forwardedHeaders: append
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

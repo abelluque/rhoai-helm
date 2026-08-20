@@ -1,0 +1,60 @@
+global:
+  cluster:
+    # Must match the OpenShift cluster name used in *.apps.<name>.<baseDomain>
+    name: ocpai-prd-mtz
+    # Replace with the real apps suffix (the part after ocpai-prd-mtz. in the console URL).
+    # Example: if routes are *.apps.ocpai-prd-mtz.mtz.example.com then baseDomain is mtz.example.com
+    baseDomain: mtz.local
+  toolsImage: image-registry.openshift-image-registry.svc:5000/openshift/tools:latest
+
+# Connected production cluster — do not enable disconnected WASM workarounds.
+disconnected:
+  enabled: false
+
+# 11-node topology (masters not schedulable).
+# Label infra + virt workers with workload.rhoai.io/platform=true (see DAY0.md).
+# Taint SuperMicro GPU nodes with nvidia.com/gpu=true:NoSchedule.
+topology:
+  masters: 3
+  infra: 3
+  workersVirtual: 3
+  workersGpuBareMetal: 2
+  gpuModel: NVIDIA H200
+  gpuPerBareMetalNode: 6
+  platformNodeLabel: workload.rhoai.io/platform
+  gpuTaint: nvidia.com/gpu=true:NoSchedule
+  hardware:
+    masters:
+      qty: 3
+      vCPU: 12
+      ramGi: 64
+      schedulable: false
+    infra:
+      qty: 3
+      vCPU: 16
+      ramGi: 64
+    workersVirtual:
+      qty: 3
+      vCPU: 12
+      ramGi: 32
+    workersGpu:
+      qty: 2
+      model: SuperMicro SYS-521GE-TNRT
+      vCPU: 128
+      ramGi: 1500
+      gpu: 6x H200
+
+storage:
+  files:
+    storageClassName: nutanix-files-dynamic
+    nfsServerName: CHANGE_ME
+
+# Production MaaS: external day-2 PostgreSQL. Provision Secret maas-db-config
+# in redhat-ods-applications before wave 5 (see DAY0.md).
+maas:
+  postgres:
+    deploy:
+      enabled: false
+    dbConfig:
+      secretName: maas-db-config
+      existingSecret: maas-db-config

@@ -74,15 +74,19 @@ spec:
             value: >-
               {{- join " " . | wrap 106 | nindent 14 }}
         {{- end }}
-        {{- with .Values.huggingface.token }}
+        {{- if or .Values.huggingface.token .Values.huggingface.existingSecret }}
         envFrom:
             - secretRef:
-                name: HF_TOKEN
+                name: {{ .Values.huggingface.existingSecret | default (printf "%s-token" (include "llminferenceservice.fullname" .)) }}
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
     {{- with .Values.nodeSelector }}
     nodeSelector:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with .Values.affinity }}
+    affinity:
       {{- toYaml . | nindent 6 }}
     {{- end }}
     {{- with .Values.tolerations }}

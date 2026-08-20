@@ -1,0 +1,4 @@
+# Install cert-manager unless the cluster already has an issuer (Venafi/ACME).
+# Set enabled: false and configure gateway-api certificate.issuerRef if cert-manager is pre-installed.
+install-cert-manager:
+  enabled: true

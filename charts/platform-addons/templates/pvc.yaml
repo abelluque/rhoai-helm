@@ -1,0 +1,21 @@
+{{- range $key, $pvc := .Values.pvcs }}
+{{- if $pvc.create }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $pvc.name }}
+  namespace: {{ $pvc.namespace }}
+  labels:
+    {{- include "platform-addons.labels" $ | nindent 4 }}
+    platform-addons.rhoai.io/pvc: {{ $key }}
+spec:
+  accessModes:
+    - {{ $pvc.accessMode }}
+  storageClassName: {{ include "platform-addons.storageClassName" $ }}
+  resources:
+    requests:
+      storage: {{ $pvc.size }}
+  volumeMode: Filesystem
+{{- end }}
+{{- end }}

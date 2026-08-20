@@ -1,0 +1,101 @@
+{{- if .Values.pipelines.patchNodePlacement }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: patch-pipelines-placement
+  namespace: openshift-operators
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: patch-pipelines-placement
+rules:
+  - apiGroups: ["operator.tekton.dev"]
+    resources: ["tektonconfigs"]
+    verbs: ["get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: patch-pipelines-placement
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: patch-pipelines-placement
+subjects:
+  - kind: ServiceAccount
+    name: patch-pipelines-placement
+    namespace: openshift-operators
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patch-pipelines-placement-script
+  namespace: openshift-operators
+data:
+  patch.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    NAME="{{ .Values.pipelines.tektonConfigName }}"
+    echo "Waiting for TektonConfig/${NAME}..."
+    until oc get tektonconfig "${NAME}" >/dev/null 2>&1; do sleep 10; done
+    oc patch tektonconfig "${NAME}" --type merge -p '{
+      "spec": {
+        "pipeline": {
+          "options": {
+            "deployments": {
+              "tekton-pipelines-controller": {
+                "spec": {
+                  "template": {
+                    "spec": {
+                      "nodeSelector": {{ .Values.scheduling.platform.nodeSelector | toJson }}
+                    }
+                  }
+                }
+              },
+              "tekton-pipelines-webhook": {
+                "spec": {
+                  "template": {
+                    "spec": {
+                      "nodeSelector": {{ .Values.scheduling.platform.nodeSelector | toJson }}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }'
+    echo "Patched TektonConfig nodeSelector"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-pipelines-placement
+  namespace: openshift-operators
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+    helm.sh/hook-weight: "5"
+spec:
+  backoffLimit: 12
+  template:
+    spec:
+      serviceAccountName: patch-pipelines-placement
+      restartPolicy: Never
+      nodeSelector:
+        {{- include "platform-addons.platformNodeSelector" . | nindent 8 }}
+      containers:
+        - name: patch
+          image: {{ .Values.global.toolsImage }}
+          command: ["/scripts/patch.sh"]
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: patch-pipelines-placement-script
+            defaultMode: 493
+{{- end }}

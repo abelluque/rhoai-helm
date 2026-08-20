@@ -1,0 +1,78 @@
+install-rhoai:
+  operators:
+    rhods-operator:
+      channel: stable-3.x
+      installPlanApproval: Manual
+      startingCSV: rhods-operator.3.4.0
+
+dataScienceCluster:
+  components:
+    kserve:
+      managementState: Managed
+      modelsAsService:
+        managementState: Managed
+    modelregistry:
+      managementState: Managed
+      registriesNamespace: rhoai-model-registries
+    dashboard:
+      managementState: Managed
+
+defaultWorkbenchPvcSize: 20Gi
+
+# SM3 is installed in wave 3. RHOAI must not manage Service Mesh 2.
+dataScienceClusterInitialization:
+  applicationsNamespace: redhat-ods-applications
+  serviceMesh:
+    managementState: Removed
+  monitoring:
+    managementState: Managed
+    namespace: redhat-ods-monitoring
+
+dashboardConfig:
+  modelAsService: true
+  genAiStudio: true
+  observabilityDashboard: true
+  vLLMDeploymentOnMaaS: true
+  maasAuthPolicies: true
+
+hardwareProfiles:
+  cpu-platform:
+    displayName: CPU platform (infra + virt workers)
+    namespace: redhat-ods-applications
+    type: Node
+    cpu:
+      min: 1
+      default: 2
+      max: 8
+    memory:
+      min: 2Gi
+      default: 8Gi
+      max: 32Gi
+    node:
+      nodeSelector:
+        workload.rhoai.io/platform: "true"
+  gpu:
+    displayName: NVIDIA H200
+    namespace: redhat-ods-applications
+    type: Node
+    cpu:
+      min: 2
+      default: 4
+      max: 16
+    memory:
+      min: 16Gi
+      default: 32Gi
+      max: 128Gi
+    gpu:
+      nvidia.com/gpu:
+        displayName: NVIDIA GPU
+        min: 1
+        default: 1
+        max: 6
+    node:
+      nodeSelector:
+        nvidia.com/gpu.present: "true"
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule

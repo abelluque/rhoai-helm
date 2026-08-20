@@ -1,0 +1,71 @@
+# Names must match llmisvc fullnameOverride values.
+# Null keys drop chart-default simulator models (Helm map merge).
+subscriptions:
+  free-models-subscription:
+    displayName: Free Models Subscription
+    priority: 0
+    groups:
+      - name: system:authenticated
+    models:
+      simulated-free: null
+      granite-3-0-8b-instruct:
+        namespace: ai-models
+        tokenRateLimits:
+          - limit: 1000
+            window: 5m
+  premium-models-subscription:
+    displayName: Premium Coding Models Subscription
+    priority: 1
+    groups:
+      - name: premium-users
+    models:
+      simulated-premium: null
+      qwen25-coder-32b:
+        namespace: ai-models
+        tokenRateLimits:
+          - limit: 10000
+            window: 2m
+      deepseek-coder-33b:
+        namespace: ai-models
+        tokenRateLimits:
+          - limit: 10000
+            window: 2m
+
+modelRefs:
+  simulated-free: null
+  simulated-premium: null
+  granite-3-0-8b-instruct:
+    namespace: ai-models
+    tier: free
+  qwen25-coder-32b:
+    namespace: ai-models
+    tier: premium
+  deepseek-coder-33b:
+    namespace: ai-models
+    tier: premium
+
+authPolicies:
+  free-models-access:
+    namespace: models-as-a-service
+    tier: free
+    description: Access policy for Granite 3.0 8B (free tier)
+    modelRefs:
+      - name: granite-3-0-8b-instruct
+        namespace: ai-models
+    groups:
+      - name: system:authenticated
+  premium-models-access:
+    namespace: models-as-a-service
+    tier: premium
+    description: Access policy for Qwen2.5-Coder and DeepSeek-Coder (premium tier)
+    modelRefs:
+      - name: qwen25-coder-32b
+        namespace: ai-models
+      - name: deepseek-coder-33b
+        namespace: ai-models
+    groups:
+      - name: system:authenticated
+      - name: premium-users
+
+tenantTelemetry:
+  enabled: true

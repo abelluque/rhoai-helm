@@ -1,0 +1,97 @@
+{{- if .Values.modelRegistry.enabled }}
+{{- $ns := .Values.modelRegistry.namespace }}
+{{- $secret := .Values.modelRegistry.mysql.existingSecret | default "model-registry-mysql" }}
+---
+{{- if not .Values.modelRegistry.mysql.existingSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secret }}
+  namespace: {{ $ns }}
+  labels:
+    {{- include "platform-addons.labels" . | nindent 4 }}
+type: Opaque
+stringData:
+  database-name: {{ .Values.modelRegistry.mysql.database | quote }}
+  database-user: {{ .Values.modelRegistry.mysql.user | quote }}
+  database-password: {{ .Values.modelRegistry.mysql.password | quote }}
+  database-root-password: {{ .Values.modelRegistry.mysql.rootPassword | quote }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-registry-mysql
+  namespace: {{ $ns }}
+  labels:
+    app: model-registry-mysql
+    {{- include "platform-addons.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: model-registry-mysql
+  template:
+    metadata:
+      labels:
+        app: model-registry-mysql
+    spec:
+      nodeSelector:
+        {{- include "platform-addons.platformNodeSelector" . | nindent 8 }}
+      containers:
+        - name: mysql
+          image: {{ .Values.modelRegistry.mysql.image }}
+          env:
+            - name: MYSQL_DATABASE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: database-name
+            - name: MYSQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: database-user
+            - name: MYSQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: database-password
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: database-root-password
+          ports:
+            - containerPort: 3306
+              name: mysql
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/mysql
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 2Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvcs.modelRegistryMysql.name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-registry-mysql
+  namespace: {{ $ns }}
+  labels:
+    app: model-registry-mysql
+spec:
+  selector:
+    app: model-registry-mysql
+  ports:
+    - name: mysql
+      port: 3306
+      targetPort: mysql
+{{- end }}

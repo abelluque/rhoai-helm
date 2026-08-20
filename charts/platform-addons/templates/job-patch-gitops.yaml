@@ -1,0 +1,83 @@
+{{- if .Values.gitops.patchNodePlacement }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: patch-gitops-placement
+  namespace: {{ .Values.gitops.argocdNamespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: patch-gitops-placement
+  namespace: {{ .Values.gitops.argocdNamespace }}
+rules:
+  - apiGroups: ["argoproj.io"]
+    resources: ["argocds"]
+    verbs: ["get", "list", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: patch-gitops-placement
+  namespace: {{ .Values.gitops.argocdNamespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: patch-gitops-placement
+subjects:
+  - kind: ServiceAccount
+    name: patch-gitops-placement
+    namespace: {{ .Values.gitops.argocdNamespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patch-gitops-placement-script
+  namespace: {{ .Values.gitops.argocdNamespace }}
+data:
+  patch.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    NS="{{ .Values.gitops.argocdNamespace }}"
+    NAME="{{ .Values.gitops.argocdName }}"
+    echo "Waiting for ArgoCD/${NAME}..."
+    until oc get argocd "${NAME}" -n "${NS}" >/dev/null 2>&1; do sleep 10; done
+    oc patch argocd "${NAME}" -n "${NS}" --type merge -p '{
+      "spec": {
+        "nodePlacement": {
+          "nodeSelector": {{ .Values.scheduling.platform.nodeSelector | toJson }}
+        }
+      }
+    }'
+    echo "Patched ArgoCD nodePlacement"
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-gitops-placement
+  namespace: {{ .Values.gitops.argocdNamespace }}
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+    helm.sh/hook-weight: "5"
+spec:
+  backoffLimit: 12
+  template:
+    spec:
+      serviceAccountName: patch-gitops-placement
+      restartPolicy: Never
+      nodeSelector:
+        {{- include "platform-addons.platformNodeSelector" . | nindent 8 }}
+      containers:
+        - name: patch
+          image: {{ .Values.global.toolsImage }}
+          command: ["/scripts/patch.sh"]
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: patch-gitops-placement-script
+            defaultMode: 493
+{{- end }}

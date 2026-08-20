@@ -1,0 +1,69 @@
+namespace:
+  create: false
+  name: ai-models
+
+displaynameOverride: "DeepSeek Coder 33B Instruct"
+fullnameOverride: deepseek-coder-33b
+
+genaiAsset:
+  enabled: true
+  description: DeepSeek-Coder 33B Instruct for code completion and repository-level tasks.
+  useCase: code
+
+model:
+  name: deepseek-coder-33b
+  uri: hf://deepseek-ai/deepseek-coder-33b-instruct
+  pvc:
+    preload: false
+    mode: ReadWriteOnce
+    size: 80Gi
+  args:
+    - --max-model-len=16384
+    - --tensor-parallel-size=1
+    - --pipeline-parallel-size=1
+    - --trust-remote-code
+
+replicas: 2
+
+hardwareProfile:
+  enabled: true
+  name: gpu
+  namespace: redhat-ods-applications
+
+resources:
+  limits:
+    cpu: "8"
+    memory: 96Gi
+    nvidia.com/gpu: "1"
+  requests:
+    cpu: "4"
+    memory: 48Gi
+    nvidia.com/gpu: "1"
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    effect: NoSchedule
+    operator: Exists
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: deepseek-coder-33b
+          topologyKey: kubernetes.io/hostname
+
+huggingface:
+  existingSecret: hf-token
+
+dataScienceConnection:
+  create: false
+
+maas:
+  enabled: true
+  createModelRef: false

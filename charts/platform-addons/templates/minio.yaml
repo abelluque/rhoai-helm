@@ -1,0 +1,101 @@
+{{- if and .Values.modelRegistry.enabled .Values.modelRegistry.minio.enabled }}
+{{- $ns := .Values.modelRegistry.namespace }}
+{{- $secret := .Values.modelRegistry.minio.existingSecret | default "model-registry-minio" }}
+---
+{{- if not .Values.modelRegistry.minio.existingSecret }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ $secret }}
+  namespace: {{ $ns }}
+  labels:
+    {{- include "platform-addons.labels" . | nindent 4 }}
+    opendatahub.io/dashboard: "true"
+    opendatahub.io/managed: "true"
+  annotations:
+    opendatahub.io/connection-type: s3
+    opendatahub.io/connection-type-ref: s3
+type: Opaque
+stringData:
+  AWS_ACCESS_KEY_ID: {{ .Values.modelRegistry.minio.rootUser | quote }}
+  AWS_SECRET_ACCESS_KEY: {{ .Values.modelRegistry.minio.rootPassword | quote }}
+  AWS_S3_ENDPOINT: http://model-registry-minio.{{ $ns }}.svc.cluster.local:9000
+  AWS_S3_BUCKET: models
+  AWS_DEFAULT_REGION: us-east-1
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-registry-minio
+  namespace: {{ $ns }}
+  labels:
+    app: model-registry-minio
+    {{- include "platform-addons.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: model-registry-minio
+  template:
+    metadata:
+      labels:
+        app: model-registry-minio
+    spec:
+      nodeSelector:
+        {{- include "platform-addons.platformNodeSelector" . | nindent 8 }}
+      containers:
+        - name: minio
+          image: {{ .Values.modelRegistry.minio.image }}
+          args:
+            - server
+            - /data
+            - --console-address
+            - ":9090"
+          env:
+            - name: MINIO_ROOT_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: AWS_ACCESS_KEY_ID
+            - name: MINIO_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $secret }}
+                  key: AWS_SECRET_ACCESS_KEY
+          ports:
+            - containerPort: 9000
+              name: api
+            - containerPort: 9090
+              name: console
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              cpu: "2"
+              memory: 4Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ .Values.pvcs.modelRegistryMinio.name }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: model-registry-minio
+  namespace: {{ $ns }}
+spec:
+  selector:
+    app: model-registry-minio
+  ports:
+    - name: api
+      port: 9000
+      targetPort: api
+    - name: console
+      port: 9090
+      targetPort: console
+{{- end }}

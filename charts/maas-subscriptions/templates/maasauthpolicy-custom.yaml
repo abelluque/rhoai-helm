@@ -1,4 +1,5 @@
 {{- range $name, $policy := .Values.authPolicies }}
+{{- if $policy }}
 ---
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSAuthPolicy
@@ -23,4 +24,5 @@ spec:
     - name: {{ .name | quote }}
     {{- end }}
     users: []
+{{- end }}
 {{- end }}

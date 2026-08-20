@@ -1,0 +1,29 @@
+# Set nfsServerName (Prism Files server short name) and optional nfsServer FQDN.
+storage:
+  files:
+    create: true
+    name: nutanix-files-dynamic
+    defaultClass: true
+    parameters:
+      dynamicProv: ENABLED
+      storageType: NutanixFiles
+      squashType: none
+      nfsServerName: CHANGE_ME
+      nfsServer: ""
+      csi.storage.k8s.io/provisioner-secret-name: ntnx-secret
+      csi.storage.k8s.io/provisioner-secret-namespace: openshift-cluster-csi-drivers
+
+scheduling:
+  platform:
+    nodeSelector:
+      workload.rhoai.io/platform: "true"
+
+modelRegistry:
+  enabled: true
+  createCR: false
+  mysql:
+    rootPassword: CHANGE_ME
+    password: CHANGE_ME
+  minio:
+    enabled: true
+    rootPassword: CHANGE_ME

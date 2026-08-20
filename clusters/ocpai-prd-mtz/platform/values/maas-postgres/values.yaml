@@ -1,0 +1,8 @@
+# Do not deploy in-cluster PostgreSQL. Day-2 owns Secret maas-db-config.
+maas:
+  postgres:
+    deploy:
+      enabled: false
+    dbConfig:
+      secretName: maas-db-config
+      existingSecret: maas-db-config

@@ -1,4 +1,5 @@
 {{- range $name, $ref := .Values.modelRefs }}
+{{- if $ref }}
 ---
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSModelRef
@@ -13,4 +14,5 @@ spec:
   modelRef:
     kind: LLMInferenceService
     name: {{ $name | quote }}
+{{- end }}
 {{- end }}

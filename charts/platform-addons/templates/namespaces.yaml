@@ -1,0 +1,9 @@
+{{- range $ns := list .Values.modelRegistry.namespace "rhods-notebooks" "openshift-pipelines" "openshift-gitops-operator" "openshift-gitops" }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $ns }}
+  labels:
+    {{- include "platform-addons.labels" $ | nindent 4 }}
+{{- end }}

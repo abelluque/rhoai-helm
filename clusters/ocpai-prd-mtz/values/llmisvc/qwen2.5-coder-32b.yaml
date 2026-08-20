@@ -1,0 +1,68 @@
+namespace:
+  create: false
+  name: ai-models
+
+displaynameOverride: "Qwen2.5 Coder 32B Instruct FP8"
+fullnameOverride: qwen25-coder-32b
+
+genaiAsset:
+  enabled: true
+  description: Qwen2.5-Coder 32B Instruct (FP8) for code generation and software engineering.
+  useCase: code
+
+model:
+  name: qwen25-coder-32b
+  uri: hf://RedHatAI/Qwen2.5-Coder-32B-Instruct-FP8-dynamic
+  pvc:
+    preload: false
+    mode: ReadWriteOnce
+    size: 40Gi
+  args:
+    - --max-model-len=32768
+    - --tensor-parallel-size=1
+    - --pipeline-parallel-size=1
+
+replicas: 2
+
+hardwareProfile:
+  enabled: true
+  name: gpu
+  namespace: redhat-ods-applications
+
+resources:
+  limits:
+    cpu: "8"
+    memory: 64Gi
+    nvidia.com/gpu: "1"
+  requests:
+    cpu: "4"
+    memory: 32Gi
+    nvidia.com/gpu: "1"
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    effect: NoSchedule
+    operator: Exists
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: qwen25-coder-32b
+          topologyKey: kubernetes.io/hostname
+
+huggingface:
+  existingSecret: hf-token
+
+dataScienceConnection:
+  create: false
+
+maas:
+  enabled: true
+  createModelRef: false

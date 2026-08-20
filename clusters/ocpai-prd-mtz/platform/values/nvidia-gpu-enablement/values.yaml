@@ -1,0 +1,7 @@
+# Exclusive H200 GPUs (no time-slicing). 2 workers x 6 GPUs = 12 allocatable.
+gpuOperator:
+  timeSlices: 1
+  policy:
+    sandboxWorkloads:
+      enabled: false
+      defaultWorkload: container

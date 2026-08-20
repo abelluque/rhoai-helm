@@ -10,12 +10,14 @@ metadata:
 spec:
   modelRefs:
   {{- range $model, $config := $sub.models }}
+  {{- if $config }}
   - name: {{ $model }}
     namespace: {{ $config.namespace }}
     {{- with $config.tokenRateLimits }}
     tokenRateLimits:
       {{- toYaml . | nindent 6 }}
     {{- end }}
+  {{- end }}
   {{- end }}
   {{- with $sub.groups }}
   owner:

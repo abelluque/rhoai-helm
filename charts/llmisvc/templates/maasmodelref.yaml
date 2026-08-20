@@ -1,4 +1,4 @@
-{{- if .Values.maas.enabled }}
+{{- if and .Values.maas.enabled (ne .Values.maas.createModelRef false) }}
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSModelRef
 metadata:

@@ -1,0 +1,23 @@
+{{- if and .Values.modelRegistry.enabled .Values.modelRegistry.createCR }}
+{{- $secret := .Values.modelRegistry.mysql.existingSecret | default "model-registry-mysql" }}
+apiVersion: modelregistry.opendatahub.io/v1beta1
+kind: ModelRegistry
+metadata:
+  name: {{ .Values.modelRegistry.name }}
+  namespace: {{ .Values.modelRegistry.namespace }}
+  labels:
+    {{- include "platform-addons.labels" . | nindent 4 }}
+spec:
+  grpc: {}
+  rest: {}
+  oauthProxy: {}
+  mysql:
+    host: model-registry-mysql
+    port: 3306
+    database: {{ .Values.modelRegistry.mysql.database | quote }}
+    username: {{ .Values.modelRegistry.mysql.user | quote }}
+    skipDBCreation: false
+    passwordSecret:
+      name: {{ $secret }}
+      key: database-password
+{{- end }}

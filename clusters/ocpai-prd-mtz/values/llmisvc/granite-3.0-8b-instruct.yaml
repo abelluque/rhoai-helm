@@ -1,0 +1,69 @@
+namespace:
+  create: true
+  name: ai-models
+
+displaynameOverride: "Granite 3.0 8B Instruct"
+fullnameOverride: granite-3-0-8b-instruct
+
+genaiAsset:
+  enabled: true
+  description: IBM Granite 3.0 8B Instruct for general chat and instruction following.
+  useCase: chat
+
+model:
+  name: granite-3-0-8b-instruct
+  uri: hf://ibm-granite/granite-3.0-8b-instruct
+  pvc:
+    preload: false
+    mode: ReadWriteOnce
+    size: 20Gi
+  args:
+    - --max-model-len=4096
+    - --tensor-parallel-size=1
+    - --pipeline-parallel-size=1
+    - --trust-remote-code
+
+replicas: 2
+
+hardwareProfile:
+  enabled: true
+  name: gpu
+  namespace: redhat-ods-applications
+
+resources:
+  limits:
+    cpu: "4"
+    memory: 32Gi
+    nvidia.com/gpu: "1"
+  requests:
+    cpu: "2"
+    memory: 16Gi
+    nvidia.com/gpu: "1"
+
+nodeSelector:
+  nvidia.com/gpu.present: "true"
+
+tolerations:
+  - key: nvidia.com/gpu
+    effect: NoSchedule
+    operator: Exists
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: granite-3-0-8b-instruct
+          topologyKey: kubernetes.io/hostname
+
+huggingface:
+  existingSecret: hf-token
+
+dataScienceConnection:
+  create: false
+
+maas:
+  enabled: true
+  createModelRef: false

@@ -1,0 +1,45 @@
+{{- if .Values.storage.files.create }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storage.files.name }}
+  {{- if .Values.storage.files.defaultClass }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    {{- include "platform-addons.labels" . | nindent 4 }}
+provisioner: {{ .Values.storage.files.provisioner }}
+reclaimPolicy: {{ .Values.storage.files.reclaimPolicy }}
+volumeBindingMode: {{ .Values.storage.files.volumeBindingMode }}
+allowVolumeExpansion: {{ .Values.storage.files.allowVolumeExpansion }}
+parameters:
+  {{- range $k, $v := .Values.storage.files.parameters }}
+  {{- if and $v (ne $v "") }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}
+{{- if .Values.storage.volumes.create }}
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storage.volumes.name }}
+  {{- if .Values.storage.volumes.defaultClass }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  {{- end }}
+  labels:
+    {{- include "platform-addons.labels" . | nindent 4 }}
+provisioner: {{ .Values.storage.volumes.provisioner }}
+reclaimPolicy: {{ .Values.storage.volumes.reclaimPolicy }}
+volumeBindingMode: {{ .Values.storage.volumes.volumeBindingMode }}
+allowVolumeExpansion: {{ .Values.storage.volumes.allowVolumeExpansion }}
+parameters:
+  {{- range $k, $v := .Values.storage.volumes.parameters }}
+  {{- if and $v (ne $v "") }}
+  {{ $k }}: {{ $v | quote }}
+  {{- end }}
+  {{- end }}
+{{- end }}
