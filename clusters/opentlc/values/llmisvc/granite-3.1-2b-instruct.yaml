@@ -1,0 +1,66 @@
+# Lab SLM: Granite 3.1 2B on CPU (no NVIDIA). Used to validate MaaS wiring
+# (Gateway, ModelRef, Subscription, AuthPolicy, chat completions) without H200s.
+# Image: Red Hat AI Inference Server CPU. Workers are m6a.4xlarge (AVX2).
+namespace:
+  create: true
+  name: ai-models
+
+displaynameOverride: "Granite 3.1 2B Instruct (CPU lab)"
+fullnameOverride: granite-3-1-2b-instruct
+
+image:
+  registry: registry.redhat.io
+  # RHAIIS 3.4 renamed the CPU image from rhaiis/ to rhaii/.
+  repository: rhaii/vllm-cpu-rhel9
+  tag: "3.4.1"
+
+genaiAsset:
+  enabled: true
+  description: Small Granite instruct model for OpenTLC lab MaaS validation (CPU only).
+  useCase: chat
+
+model:
+  name: granite-3-1-2b-instruct
+  uri: hf://ibm-granite/granite-3.1-2b-instruct
+  pvc:
+    preload: false
+    mode: ReadWriteOnce
+    size: 10Gi
+  args:
+    - --max-model-len=2048
+    - --enforce-eager
+    - --dtype=float32
+
+replicas: 1
+
+hardwareProfile:
+  enabled: true
+  name: cpu-platform
+  namespace: redhat-ods-applications
+
+# Null GPU keys so Helm does not keep nvidia.com/gpu from chart defaults.
+resources:
+  limits:
+    cpu: "8"
+    memory: 16Gi
+    nvidia.com/gpu: null
+  requests:
+    cpu: "4"
+    memory: 8Gi
+    nvidia.com/gpu: null
+
+nodeSelector:
+  nvidia.com/gpu.present: null
+  workload.rhoai.io/platform: "true"
+
+tolerations: []
+
+huggingface:
+  existingSecret: ""
+
+dataScienceConnection:
+  create: false
+
+maas:
+  enabled: true
+  createModelRef: false

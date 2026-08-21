@@ -1,0 +1,46 @@
+global:
+  cluster:
+    # From console: https://console-openshift-console.apps.cluster-6f7dh.6f7dh.sandbox3519.opentlc.com/
+    name: cluster-6f7dh
+    baseDomain: 6f7dh.sandbox3519.opentlc.com
+  toolsImage: image-registry.openshift-image-registry.svc:5000/openshift/tools:latest
+
+# Connected OpenTLC lab — do not enable disconnected WASM workarounds.
+disconnected:
+  enabled: false
+
+# 6-node AWS lab (no GPU). Purpose: rehearse, fix, and validate the install
+# before ocpai-prd-mtz. Region us-east-2. Masters are not schedulable.
+topology:
+  purpose: lab
+  region: us-east-2
+  masters: 3
+  workers: 3
+  workersGpuBareMetal: 0
+  platformNodeLabel: workload.rhoai.io/platform
+  hardware:
+    masters:
+      qty: 3
+      instanceType: m6a.2xlarge
+      vCPU: 8
+      ramGi: 30.67
+      diskGi: 99.78
+      schedulable: false
+    workers:
+      qty: 3
+      instanceType: m6a.4xlarge
+      vCPU: 16
+      ramGi: 61.46
+      diskGi: 99.78
+
+storage:
+  files:
+    storageClassName: gp3-csi
+
+# Lab MaaS: in-cluster PostgreSQL (wave 4 creates maas-db-config).
+maas:
+  postgres:
+    deploy:
+      enabled: true
+    dbConfig:
+      secretName: maas-db-config

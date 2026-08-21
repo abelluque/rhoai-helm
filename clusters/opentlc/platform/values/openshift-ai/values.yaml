@@ -1,0 +1,55 @@
+install-rhoai:
+  operators:
+    rhods-operator:
+      channel: stable-3.x
+      installPlanApproval: Manual
+      startingCSV: rhods-operator.3.4.0
+
+dataScienceCluster:
+  components:
+    kserve:
+      managementState: Managed
+      modelsAsService:
+        managementState: Managed
+    modelregistry:
+      managementState: Managed
+      registriesNamespace: rhoai-model-registries
+    dashboard:
+      managementState: Managed
+
+defaultWorkbenchPvcSize: 10Gi
+
+# Ingress Operator owns Gateway API on OCP 4.19+. RHOAI must not manage SM2.
+dataScienceClusterInitialization:
+  applicationsNamespace: redhat-ods-applications
+  serviceMesh:
+    managementState: Removed
+  monitoring:
+    managementState: Managed
+    namespace: redhat-ods-monitoring
+
+dashboardConfig:
+  modelAsService: true
+  genAiStudio: true
+  observabilityDashboard: true
+  vLLMDeploymentOnMaaS: true
+  maasAuthPolicies: true
+
+# CPU-only lab: no GPU hardware profile (null drops the chart-default gpu key).
+hardwareProfiles:
+  gpu: null
+  cpu-platform:
+    displayName: CPU workers (OpenTLC lab)
+    namespace: redhat-ods-applications
+    type: Node
+    cpu:
+      min: 1
+      default: 2
+      max: 8
+    memory:
+      min: 2Gi
+      default: 8Gi
+      max: 32Gi
+    node:
+      nodeSelector:
+        workload.rhoai.io/platform: "true"

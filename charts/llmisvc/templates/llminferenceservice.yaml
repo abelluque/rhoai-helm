@@ -80,10 +80,11 @@ spec:
                 name: {{ .Values.huggingface.existingSecret | default (printf "%s-token" (include "llminferenceservice.fullname" .)) }}
         {{- end }}
         resources:
-          {{- toYaml .Values.resources | nindent 10 }}
-    {{- with .Values.nodeSelector }}
+          {{- include "llminferenceservice.resources" . | nindent 10 }}
+    {{- $ns := include "llminferenceservice.nodeSelector" . | trim }}
+    {{- if $ns }}
     nodeSelector:
-      {{- toYaml . | nindent 6 }}
+      {{- $ns | nindent 6 }}
     {{- end }}
     {{- with .Values.affinity }}
     affinity:

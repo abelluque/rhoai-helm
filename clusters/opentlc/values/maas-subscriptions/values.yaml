@@ -1,0 +1,37 @@
+# Names must match llmisvc fullnameOverride. Null keys drop simulator / unused defaults.
+subscriptions:
+  free-models-subscription:
+    displayName: Free Models Subscription
+    priority: 0
+    groups:
+      - name: system:authenticated
+    models:
+      simulated-free: null
+      granite-3-1-2b-instruct:
+        namespace: ai-models
+        tokenRateLimits:
+          - limit: 1000
+            window: 5m
+  premium-models-subscription: null
+
+modelRefs:
+  simulated-free: null
+  simulated-premium: null
+  granite-3-1-2b-instruct:
+    namespace: ai-models
+    tier: free
+
+authPolicies:
+  free-models-access:
+    namespace: models-as-a-service
+    tier: free
+    description: Access policy for Granite 3.1 2B CPU lab model
+    modelRefs:
+      - name: granite-3-1-2b-instruct
+        namespace: ai-models
+    groups:
+      - name: system:authenticated
+  premium-models-access: null
+
+tenantTelemetry:
+  enabled: true

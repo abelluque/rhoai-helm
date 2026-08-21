@@ -1,0 +1,41 @@
+# AWS gp3-csi (RWO). Do not create Nutanix Files. RWX PVCs are RWO in this lab.
+storage:
+  files:
+    create: false
+    name: gp3-csi
+    defaultClass: false
+  volumes:
+    create: false
+
+scheduling:
+  platform:
+    nodeSelector:
+      workload.rhoai.io/platform: "true"
+
+pvcs:
+  modelRegistryMysql:
+    create: true
+    size: 10Gi
+    accessMode: ReadWriteOnce
+  modelRegistryMinio:
+    create: true
+    size: 20Gi
+    accessMode: ReadWriteOnce
+  notebooksShared:
+    create: true
+    size: 10Gi
+    accessMode: ReadWriteOnce
+  pipelinesArtifacts:
+    create: true
+    size: 20Gi
+    accessMode: ReadWriteOnce
+
+modelRegistry:
+  enabled: true
+  createCR: false
+  mysql:
+    rootPassword: opentlc-lab
+    password: opentlc-lab
+  minio:
+    enabled: true
+    rootPassword: opentlc-lab

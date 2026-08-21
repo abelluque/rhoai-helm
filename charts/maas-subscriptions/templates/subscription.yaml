@@ -1,4 +1,5 @@
 {{- range $name, $sub := .Values.subscriptions }}
+{{- if $sub }}
 ---
 apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSSubscription
@@ -25,4 +26,5 @@ spec:
       {{- toYaml . | nindent 6 }}
   {{- end }}
   priority: {{ $sub.priority | default 0 }}
+{{- end }}
 {{- end }}

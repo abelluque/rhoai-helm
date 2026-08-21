@@ -64,6 +64,32 @@ Image Reference - sha256 or tag
 {{ .Values.image.registry }}/{{ .Values.image.repository }}{{ include "llminferenceservice.image.tag" . }}
 {{- end }}
 
+{{- define "llminferenceservice.resources" -}}
+{{- $out := dict }}
+{{- range $section, $vals := (.Values.resources | default dict) }}
+{{- if $vals }}
+{{- $clean := dict }}
+{{- range $k, $v := $vals }}
+{{- if $v }}
+{{- $_ := set $clean $k $v }}
+{{- end }}
+{{- end }}
+{{- if $clean }}
+{{- $_ := set $out $section $clean }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- toYaml $out }}
+{{- end }}
+
+{{- define "llminferenceservice.nodeSelector" -}}
+{{- range $k, $v := (.Values.nodeSelector | default dict) }}
+{{- if $v }}
+{{ $k }}: {{ $v | quote }}
+{{- end }}
+{{- end }}
+{{- end }}
+
 {{/*
 Convenience function to template dockerconfigjson
 */}}

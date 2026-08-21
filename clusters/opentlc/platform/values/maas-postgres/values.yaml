@@ -1,0 +1,17 @@
+# Lab: in-cluster PostgreSQL. Wave 4 Job create-maas-db-config writes the secret
+# that wave 5 (OpenShift AI / MaaS) requires. Credentials are lab-only.
+maas:
+  postgres:
+    deploy:
+      enabled: true
+    dbConfig:
+      secretName: maas-db-config
+      existingSecret: ""
+
+credentials:
+  user: maas
+  password: opentlc-lab
+  database: maas
+
+storage:
+  size: 5Gi

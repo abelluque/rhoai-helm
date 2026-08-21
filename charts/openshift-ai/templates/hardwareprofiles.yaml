@@ -1,4 +1,5 @@
 {{- range $name, $profile := .Values.hardwareProfiles }}
+{{- if $profile }}
 ---
 apiVersion: infrastructure.opendatahub.io/v1alpha1
 kind: HardwareProfile
@@ -55,4 +56,5 @@ spec:
     node: {}
     {{- end }}
     {{- end }}
+{{- end }}
 {{- end }}

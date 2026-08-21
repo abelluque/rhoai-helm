@@ -1,0 +1,26 @@
+# External MaaS hostname: maas.apps.cluster-6f7dh.6f7dh.sandbox3519.opentlc.com
+# TLS: OpenShift Route (edge) using the cluster ingress certificate.
+gateways:
+  maas-default-gateway:
+    listeners:
+      http:
+        hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
+      https:
+        hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
+        certificate:
+          create: false
+          secretName: maas-default-gateway-tls
+        tls:
+          certificateRefs:
+            - group: ""
+              kind: Secret
+              name: maas-default-gateway-tls
+
+route:
+  create: true
+  name: maas-default-gateway
+  timeout: 10m
+  forwardedHeaders: append
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

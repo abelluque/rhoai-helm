@@ -1,0 +1,4 @@
+# OpenTLC/RHDP often already has cert-manager. If the install conflicts, set
+# enabled: false and add --take-ownership only when adopting the existing operator.
+install-cert-manager:
+  enabled: true

@@ -10,13 +10,16 @@ The existing Kustomize tree at `[rhoai-3_4/](../rhoai-3_4/)` and `[bootstrap.sh]
 rhoai-helm/
 ├── charts/                         # Reusable Helm charts
 └── clusters/
-    └── ocpai-prd-mtz/              # Production overlay (OpenShift 4.22)
-        ├── cluster.yaml            # Global cluster name/domain/toolsImage
-        ├── platform/values/{app}/  # Platform chart overrides (waves 1–5)
-        └── values/{app}/           # Workload chart overrides (waves 6–7)
+    ├── ocpai-prd-mtz/              # Production overlay (OpenShift 4.22, 12× H200)
+    └── opentlc/                    # OpenTLC lab (no GPU) — rehearse / fix / validate
 ```
 
-This fork targets a single cluster. Install steps for **ocpai-prd-mtz** are in [clusters/ocpai-prd-mtz/README.md](clusters/ocpai-prd-mtz/README.md).
+Overlays:
+
+| Overlay | Cluster | Purpose |
+| --- | --- | --- |
+| [clusters/ocpai-prd-mtz](clusters/ocpai-prd-mtz/README.md) | `ocpai-prd-mtz` | Production MaaS (3 GPU models) |
+| [clusters/opentlc](clusters/opentlc/README.md) | `cluster-6f7dh` (sandbox3519) | Lab: full stack without NVIDIA; Granite 3.1 2B on CPU |
 
 **Model name contract:** keys in `llmisvc` `models:` must match names in `maas-subscriptions` `modelRefs`, `subscriptions`, and `authPolicies`.
 
@@ -26,8 +29,8 @@ This fork targets a single cluster. Install steps for **ocpai-prd-mtz** are in [
 | ---- | ------------------------- | ------------------------------------------------------------------------ |
 | 1    | `cert-manager`            | cert-manager operator                                                    |
 | 1    | `observability-operators` | Tempo, Cluster Observability, OpenTelemetry operators                    |
-| 1    | `platform-addons`         | GitOps, Pipelines, Nutanix Files SC, Model Registry PVCs (ocpai overlay) |
-| 2    | `nvidia-gpu-enablement`   | NFD + NVIDIA GPU operator; instances via post-install Jobs               |
+| 1    | `platform-addons`         | GitOps, Pipelines, storage PVCs, Model Registry (overlay-specific SC)    |
+| 2    | `nvidia-gpu-enablement`   | NFD + NVIDIA GPU operator (**ocpai-prd-mtz only**; skip on `opentlc`)     |
 | 2    | `leaderworkerset`         | Leader Worker Set operator; instance via post-install Job                |
 | 2    | `rhcl`                    | Red Hat Connectivity Link operator; Kuadrant via post-install Job        |
 | 3    | `gateway-api`             | GatewayClass + maas-default-gateway (Ingress Operator on OCP 4.22)       |
@@ -40,7 +43,9 @@ Wave 4 (`maas-postgres`) runs before wave 5 (`openshift-ai`) so the `maas-db-con
 
 ### 1. Configure the cluster overlay
 
-Edit `clusters/ocpai-prd-mtz/cluster.yaml` (`global.cluster.baseDomain`) plus platform overrides under `clusters/ocpai-prd-mtz/platform/values/` and workload overrides under `clusters/ocpai-prd-mtz/values/`. See [clusters/ocpai-prd-mtz/DAY0.md](clusters/ocpai-prd-mtz/DAY0.md).
+Production: edit `clusters/ocpai-prd-mtz/` — [DAY0.md](clusters/ocpai-prd-mtz/DAY0.md).
+
+Lab (no GPU, rehearse the install): `clusters/opentlc/` — [DAY0.md](clusters/opentlc/DAY0.md). Do not install `nvidia-gpu-enablement` on that overlay.
 
 ### 2. Update chart dependencies
 
