@@ -27,7 +27,8 @@ model:
     mode: ReadWriteOnce
     size: 10Gi
   args:
-    - --max-model-len=2048
+    - --max-model-len=1024
+    - --max-num-seqs=1
     - --enforce-eager
     - --dtype=float32
 
@@ -39,14 +40,16 @@ hardwareProfile:
   namespace: redhat-ods-applications
 
 # Null GPU keys so Helm does not keep nvidia.com/gpu from chart defaults.
+# float32 2B weights are ~8Gi plus KV cache and vLLM overhead; 16Gi OOMKilled
+# on m6a.4xlarge (61Gi). Leave headroom for platform pods on the same workers.
 resources:
   limits:
     cpu: "8"
-    memory: 16Gi
+    memory: 32Gi
     nvidia.com/gpu: null
   requests:
     cpu: "4"
-    memory: 8Gi
+    memory: 16Gi
     nvidia.com/gpu: null
 
 nodeSelector:
