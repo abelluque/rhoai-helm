@@ -208,12 +208,18 @@ Esperar Job `create-maas-db-config`. Credenciales de lab: `maas` / `opentlc-lab`
 ## 6. Wave 5 — OpenShift AI, MaaS y Model Registry CR
 
 ```bash
+# Operator Subscription first; HardwareProfile/DSC CRDs are not installed yet.
 helm upgrade --install openshift-ai charts/openshift-ai \
-  -n redhat-ods-operator --create-namespace \
+  -n redhat-ods-operator --create-namespace --no-hooks \
   -f $CLUSTER/cluster.yaml \
   -f $CLUSTER/platform/values/openshift-ai/values.yaml
 
 ./clusters/opentlc/scripts/approve-installplans.sh redhat-ods-operator
+# wait until CSV rhods-operator is Succeeded, then:
+helm upgrade --install openshift-ai charts/openshift-ai \
+  -n redhat-ods-operator --timeout 20m \
+  -f $CLUSTER/cluster.yaml \
+  -f $CLUSTER/platform/values/openshift-ai/values.yaml
 
 helm upgrade --install platform-addons charts/platform-addons \
   -n rhoai-model-registries \
@@ -221,6 +227,8 @@ helm upgrade --install platform-addons charts/platform-addons \
   -f $CLUSTER/platform/values/platform-addons/values.yaml \
   --set modelRegistry.createCR=true
 ```
+
+`HardwareProfile` se aplica con el Job `apply-hardwareprofiles` después de que el operator publique la CRD. No va en el manifiesto principal de Helm (el RESTMapper fallaría con `no matches for kind "HardwareProfile"`).
 
 ## 7. Wave 8 luego 7 — SLM CPU y suscripciones MaaS
 

@@ -1,9 +1,11 @@
+# Pin may be missing from the OpenTLC 4.20 catalog. Automatic installs
+# whichever rhods-operator CSV stable-3.x currently ships.
 install-rhoai:
   operators:
     rhods-operator:
       channel: stable-3.x
-      installPlanApproval: Manual
-      startingCSV: rhods-operator.3.4.0
+      installPlanApproval: Automatic
+      startingCSV: null
 
 dataScienceCluster:
   components:

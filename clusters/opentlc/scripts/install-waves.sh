@@ -57,12 +57,19 @@ helm upgrade --install maas-postgres "${CHARTS}/maas-postgres" -n redhat-ods-app
 wait_job redhat-ods-applications create-maas-db-config 600 || true
 
 echo "== Wave 5: OpenShift AI + MaaS =="
+# Subscriptions first (--no-hooks). HardwareProfile/DSC CRDs do not exist yet;
+# hooks apply those CRs after the operator CSV is Succeeded.
 helm upgrade --install openshift-ai "${CHARTS}/openshift-ai" -n redhat-ods-operator --create-namespace \
+  --no-hooks \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/openshift-ai/values.yaml"
 ./clusters/opentlc/scripts/approve-installplans.sh redhat-ods-operator || true
 wait_csv redhat-ods-operator rhods-operator 1200
+helm upgrade --install openshift-ai "${CHARTS}/openshift-ai" -n redhat-ods-operator \
+  --timeout 20m \
+  -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/openshift-ai/values.yaml"
 wait_job redhat-ods-operator apply-dsci 900 || true
-wait_job redhat-ods-operator apply-dsc 1200 || true
+wait_job redhat-ods-applications apply-dsc 1200 || true
+wait_job redhat-ods-applications apply-hardwareprofiles 600 || true
 
 echo "== Wave 5b: ModelRegistry CR =="
 helm upgrade --install platform-addons "${CHARTS}/platform-addons" -n rhoai-model-registries \

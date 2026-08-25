@@ -1,60 +1,143 @@
+{{- $hasProfiles := false }}
 {{- range $name, $profile := .Values.hardwareProfiles }}
 {{- if $profile }}
----
-apiVersion: infrastructure.opendatahub.io/v1alpha1
-kind: HardwareProfile
-metadata:
-  name: {{ $name }}
-  namespace: {{ $profile.namespace | default "redhat-ods-applications" }}
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "2"
-    opendatahub.io/disabled: 'false'
-    opendatahub.io/display-name: {{ $profile.displayName | default (title $name) }}
-spec:
-  identifiers:
-    {{- with ($profile.cpu | default dict) }}
-    - identifier: cpu
-      displayName: CPU
-      resourceType: CPU
-      minCount: {{ .min | default 1 }}
-      defaultCount: {{ .default | default 4 }}
-      maxCount: {{ .max | default 4 }}
-    {{- end }}
-    {{- with ($profile.memory | default dict) }}
-    - identifier: memory
-      displayName: Memory
-      resourceType: Memory
-      minCount: {{ .min | default "2Gi" }}
-      defaultCount: {{ .default | default "16Gi" }}
-      maxCount: {{ .max | default "16Gi" }}
-    {{- end }}
-    {{- range $k, $v := ($profile.gpu | default dict) }}
-    - identifier: {{ $k }}
-      resourceType: Accelerator
-      {{- with $v.displayName }}
-      displayName: {{ . }}
-      {{- end }}
-      minCount: {{ $v.min | default 1 }}
-      maxCount: {{ $v.max | default 1 }}
-      defaultCount: {{ $v.default | default 1 }}
-    {{- end }}
-  scheduling:
-    type: {{ $profile.type | default "Node" }}
-    {{- if eq $profile.type "Kueue" }}
-    kueue:
-    {{- if $profile.kueue }}
-      {{- toYaml $profile.kueue | nindent 6 }}
-    {{- else }}
-      localQueueName: default
-    {{- end }}
-    {{- else }}
-    {{- if $profile.node }}
-    node:
-      {{- toYaml $profile.node | nindent 6 }}
-    {{- else }}
-    node: {}
-    {{- end }}
-    {{- end }}
+{{- $hasProfiles = true }}
 {{- end }}
+{{- end }}
+{{- if $hasProfiles }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apply-hardwareprofiles
+  namespace: redhat-ods-applications
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: apply-hardwareprofiles
+  namespace: redhat-ods-applications
+rules:
+  - apiGroups: ["infrastructure.opendatahub.io"]
+    resources: ["hardwareprofiles"]
+    verbs: ["get", "list", "watch", "create", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: apply-hardwareprofiles
+  namespace: redhat-ods-applications
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: apply-hardwareprofiles
+subjects:
+  - kind: ServiceAccount
+    name: apply-hardwareprofiles
+    namespace: redhat-ods-applications
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apply-hardwareprofiles
+  namespace: redhat-ods-applications
+data:
+  hardwareprofiles.yaml: |
+    {{- range $name, $profile := .Values.hardwareProfiles }}
+    {{- if $profile }}
+    ---
+    apiVersion: infrastructure.opendatahub.io/v1alpha1
+    kind: HardwareProfile
+    metadata:
+      name: {{ $name }}
+      namespace: {{ $profile.namespace | default "redhat-ods-applications" }}
+      annotations:
+        opendatahub.io/disabled: "false"
+        opendatahub.io/display-name: {{ $profile.displayName | default (title $name) | quote }}
+    spec:
+      identifiers:
+        {{- with ($profile.cpu | default dict) }}
+        - identifier: cpu
+          displayName: CPU
+          resourceType: CPU
+          minCount: {{ .min | default 1 }}
+          defaultCount: {{ .default | default 4 }}
+          maxCount: {{ .max | default 4 }}
+        {{- end }}
+        {{- with ($profile.memory | default dict) }}
+        - identifier: memory
+          displayName: Memory
+          resourceType: Memory
+          minCount: {{ .min | default "2Gi" | quote }}
+          defaultCount: {{ .default | default "16Gi" | quote }}
+          maxCount: {{ .max | default "16Gi" | quote }}
+        {{- end }}
+        {{- range $k, $v := ($profile.gpu | default dict) }}
+        - identifier: {{ $k }}
+          resourceType: Accelerator
+          {{- with $v.displayName }}
+          displayName: {{ . }}
+          {{- end }}
+          minCount: {{ $v.min | default 1 }}
+          maxCount: {{ $v.max | default 1 }}
+          defaultCount: {{ $v.default | default 1 }}
+        {{- end }}
+      scheduling:
+        type: {{ $profile.type | default "Node" }}
+        {{- if eq ($profile.type | default "Node") "Kueue" }}
+        kueue:
+        {{- if $profile.kueue }}
+          {{- toYaml $profile.kueue | nindent 10 }}
+        {{- else }}
+          localQueueName: default
+        {{- end }}
+        {{- else }}
+        {{- if $profile.node }}
+        node:
+          {{- toYaml $profile.node | nindent 10 }}
+        {{- else }}
+        node: {}
+        {{- end }}
+        {{- end }}
+    {{- end }}
+    {{- end }}
+  apply-hardwareprofiles.sh: |
+{{ .Files.Get "files/apply-hardwareprofiles.sh" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: apply-hardwareprofiles
+  namespace: redhat-ods-applications
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "3"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  backoffLimit: 12
+  template:
+    spec:
+      serviceAccountName: apply-hardwareprofiles
+      restartPolicy: Never
+      containers:
+        - name: apply-hardwareprofiles
+          image: {{ .Values.global.toolsImage }}
+          imagePullPolicy: IfNotPresent
+          command: ["/scripts/apply-hardwareprofiles.sh"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: config
+          configMap:
+            name: apply-hardwareprofiles
+        - name: scripts
+          configMap:
+            name: apply-hardwareprofiles
+            items:
+              - key: apply-hardwareprofiles.sh
+                path: apply-hardwareprofiles.sh
+            defaultMode: 493
 {{- end }}
