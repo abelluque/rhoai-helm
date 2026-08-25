@@ -48,7 +48,7 @@ enabled: {{ default true $configured.enabled }}
 namespace: {{ default (default "openshift-cluster-observability-operator" $coo.namespace) $configured.namespace }}
 deployment: {{ default "perses-operator" $configured.deployment }}
 container: {{ default "perses-operator" $configured.container }}
-csvName: {{ default (default "cluster-observability-operator.v1.4.0" $coo.startingCSV) $csvPatch.csvName }}
+csvName: {{ default (default "" $coo.startingCSV) $csvPatch.csvName }}
 subscription: {{ default "cluster-observability-operator" $csvPatch.subscription }}
 requests:
   memory: {{ default "3Gi" $requests.memory }}

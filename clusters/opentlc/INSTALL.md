@@ -118,7 +118,7 @@ helm upgrade --install cert-manager charts/cert-manager \
   -f $CLUSTER/platform/values/cert-manager/values.yaml
 
 helm upgrade --install observability-operators charts/observability-operators \
-  -n openshift-operators \
+  -n openshift-operators --timeout 20m \
   -f $CLUSTER/cluster.yaml \
   -f $CLUSTER/platform/values/observability-operators/values.yaml
 

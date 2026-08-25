@@ -76,11 +76,17 @@ resolve_coo_csv() {
       echo "${COO_CSV_FALLBACK}"
       return 0
     fi
-    return 1
+    echo "Pinned CSV ${COO_CSV_FALLBACK} not present yet; trying subscription currentCSV..." >&2
   fi
 
   current=$(oc get subscription "${COO_SUBSCRIPTION}" -n "${NAMESPACE}" -o jsonpath='{.status.currentCSV}' 2>/dev/null || true)
   if [ -n "${current}" ] && oc get csv "${current}" -n "${NAMESPACE}" >/dev/null 2>&1; then
+    echo "${current}"
+    return 0
+  fi
+
+  current=$(oc get csv -n "${NAMESPACE}" --no-headers 2>/dev/null | awk '/cluster-observability-operator/ && /Succeeded|Replacing|Pending/ {print $1; exit}')
+  if [ -n "${current}" ]; then
     echo "${current}"
     return 0
   fi

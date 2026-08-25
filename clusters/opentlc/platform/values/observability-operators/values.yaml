@@ -1,1 +1,18 @@
-# Cluster-specific overrides for observability-operators (optional)
+# OpenTLC 4.20: do not pin Tempo/COO/OTel CSVs from the chart defaults.
+# Those pins may be missing from this catalog; Manual without a matching
+# InstallPlan leaves Helm hooks (patch-perses-operator-resources) InProgress
+# until the default 5m timeout.
+install-observability:
+  operators:
+    tempo-product:
+      installPlanApproval: Automatic
+      startingCSV: null
+    cluster-observability-operator:
+      installPlanApproval: Automatic
+      startingCSV: null
+    opentelemetry-product:
+      installPlanApproval: Automatic
+      startingCSV: null
+
+csvPatch:
+  csvName: ""

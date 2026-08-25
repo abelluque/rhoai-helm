@@ -21,6 +21,7 @@ echo "== Wave 1: cert-manager + observability-operators + platform-addons =="
 helm upgrade --install cert-manager "${CHARTS}/cert-manager" -n cert-manager-operator --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/cert-manager/values.yaml"
 helm upgrade --install observability-operators "${CHARTS}/observability-operators" -n openshift-operators \
+  --timeout 20m \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/observability-operators/values.yaml"
 helm upgrade --install platform-addons "${CHARTS}/platform-addons" -n rhoai-model-registries --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/platform-addons/values.yaml" \
