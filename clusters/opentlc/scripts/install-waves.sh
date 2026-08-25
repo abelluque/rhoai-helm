@@ -40,6 +40,7 @@ wait_ns_not_terminating kuadrant-system 300
 helm upgrade --install leaderworkerset "${CHARTS}/leaderworkerset" -n openshift-lws-operator --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/leaderworkerset/values.yaml"
 helm upgrade --install rhcl "${CHARTS}/rhcl" -n kuadrant-system --create-namespace \
+  --timeout 15m \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/rhcl/values.yaml"
 ./clusters/opentlc/scripts/approve-installplans.sh openshift-lws-operator kuadrant-system || true
 wait_csv kuadrant-system 'rhcl|kuadrant' 900 || true

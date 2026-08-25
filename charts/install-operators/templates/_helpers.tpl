@@ -52,8 +52,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{/*
 True if $ns already has an OperatorGroup. lookup with an empty name can return
-cluster-wide items on some Helm versions; only count groups in this namespace.
-OLM will not resolve a Subscription if the namespace has zero or multiple OGs.
+cluster-wide items without .metadata.namespace; only count groups whose
+namespace field equals $ns. Do not use `default $ns` — an empty namespace
+would look like a match and Helm would drop the OG from the release.
 */}}
 {{- define "install-operators.namespaceHasOperatorGroup" -}}
 {{- $ns := . -}}
@@ -62,12 +63,12 @@ OLM will not resolve a Subscription if the namespace has zero or multiple OGs.
 {{- if $list -}}
 {{- if $list.items -}}
 {{- range $list.items -}}
-{{- if eq (default $ns .metadata.namespace) $ns -}}
+{{- if and .metadata.namespace (eq .metadata.namespace $ns) -}}
 {{- $found = true -}}
 {{- end -}}
 {{- end -}}
-{{- else if and $list.metadata $list.metadata.name -}}
-{{- if eq (default $ns $list.metadata.namespace) $ns -}}
+{{- else if and $list.metadata $list.metadata.name $list.metadata.namespace -}}
+{{- if eq $list.metadata.namespace $ns -}}
 {{- $found = true -}}
 {{- end -}}
 {{- end -}}

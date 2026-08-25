@@ -47,7 +47,8 @@ metadata:
     helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-delete-policy: before-hook-creation
 spec:
-  backoffLimit: 6
+  backoffLimit: 2
+  activeDeadlineSeconds: 240
   template:
     spec:
       serviceAccountName: patch-rhcl-csv
@@ -64,6 +65,8 @@ spec:
               value: {{ .Values.kuadrant.namespace | quote }}
             - name: ISTIO_GATEWAY_CONTROLLER_NAMES
               value: {{ .Values.csvPatch.gatewayControllerNames | quote }}
+            - name: WAIT_TIMEOUT
+              value: "180"
           volumeMounts:
             - name: scripts
               mountPath: /scripts

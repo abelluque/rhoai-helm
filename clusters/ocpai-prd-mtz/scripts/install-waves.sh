@@ -39,6 +39,7 @@ helm upgrade --install nvidia-gpu-enablement "${CHARTS}/nvidia-gpu-enablement" -
 helm upgrade --install leaderworkerset "${CHARTS}/leaderworkerset" -n openshift-lws-operator --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/leaderworkerset/values.yaml"
 helm upgrade --install rhcl "${CHARTS}/rhcl" -n kuadrant-system --create-namespace \
+  --timeout 15m \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/rhcl/values.yaml"
 ./clusters/ocpai-prd-mtz/scripts/approve-installplans.sh openshift-nfd nvidia-gpu-operator openshift-lws-operator kuadrant-system || true
 wait_csv openshift-nfd nfd 900 || true

@@ -2,7 +2,11 @@
 {{- if $config.namespace }}
 {{- if $config.operatorGroup }}
 {{- if $config.operatorGroup.enabled }}
-{{- if ne (include "install-operators.namespaceHasOperatorGroup" $config.namespace | trim) "true" }}
+{{- $namedOg := lookup "operators.coreos.com/v1" "OperatorGroup" $config.namespace $operator }}
+{{- $nsHasOg := eq (include "install-operators.namespaceHasOperatorGroup" $config.namespace | trim) "true" }}
+{{- /* Keep rendering a Helm-owned OG so upgrades do not delete it. Skip only when
+     a *different* OG already exists (RHDP) and ours is not in the cluster. */}}
+{{- if or $namedOg (not $nsHasOg) }}
 ---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup

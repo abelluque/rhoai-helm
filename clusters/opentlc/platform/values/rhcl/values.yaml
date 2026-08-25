@@ -1,1 +1,10 @@
-# Cluster-specific overrides for Red Hat Connectivity Link (optional)
+# OpenTLC 4.20 catalog may ship RHCL newer than the chart pin (v1.3.4).
+# Manual + missing startingCSV leaves patch-rhcl-csv waiting forever.
+install-rhcl:
+  operators:
+    rhcl-operator:
+      installPlanApproval: Automatic
+      startingCSV: null
+
+csvPatch:
+  csvName: ""
