@@ -24,6 +24,7 @@ helm upgrade --install cert-manager "${CHARTS}/cert-manager" -n cert-manager-ope
 helm upgrade --install observability-operators "${CHARTS}/observability-operators" -n openshift-operators \
   --timeout 20m \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/observability-operators/values.yaml"
+reset_broken_helm_release platform-addons rhoai-model-registries
 helm upgrade --install platform-addons "${CHARTS}/platform-addons" -n rhoai-model-registries --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/platform-addons/values.yaml" \
   --set modelRegistry.createCR=false

@@ -35,6 +35,28 @@ warn_if_wrong_cluster() {
   fi
 }
 
+# helm upgrade fails with sh.helm.release.v1.<release>.vN not found when the
+# history Secret was deleted. Clear leftover Helm metadata so --install works.
+reset_broken_helm_release() {
+  local release="$1"
+  local ns="$2"
+  local listed hist last
+  listed="$(helm list -n "${ns}" -q --filter "^${release}$" 2>/dev/null || true)"
+  [[ "${listed}" == "${release}" ]] || return 0
+
+  hist="$(helm history "${release}" -n "${ns}" --max 1 -o json 2>&1 || true)"
+  last="$(echo "${hist}" | grep -o '"revision":[0-9]*' | head -1 | cut -d: -f2 || true)"
+  if echo "${hist}" | grep -qi 'not found'; then
+    echo "Helm history for ${release} is missing; clearing release secrets in ${ns}"
+  elif [[ -n "${last}" ]] && ! oc get secret "sh.helm.release.v1.${release}.v${last}" -n "${ns}" >/dev/null 2>&1; then
+    echo "Helm secret sh.helm.release.v1.${release}.v${last} missing in ${ns}; clearing release metadata"
+  else
+    return 0
+  fi
+  helm uninstall "${release}" -n "${ns}" --no-hooks 2>/dev/null || true
+  oc delete secret -n "${ns}" -l "owner=helm,name=${release}" --ignore-not-found
+}
+
 approve_installplans() {
   local ns
   for ns in "$@"; do
