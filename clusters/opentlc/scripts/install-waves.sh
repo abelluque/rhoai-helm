@@ -15,6 +15,9 @@ for c in cert-manager rhcl leaderworkerset openshift-ai observability-operators 
 done
 
 echo "== Wave 1: cert-manager + observability-operators + platform-addons =="
+# OpenTLC/RHDP often pre-creates cert-manager-operator. Do not pass
+# --take-ownership: that would put the platform Namespace into the Helm
+# release and helm uninstall would delete it. The chart skips existing NS/OG.
 helm upgrade --install cert-manager "${CHARTS}/cert-manager" -n cert-manager-operator --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/cert-manager/values.yaml"
 helm upgrade --install observability-operators "${CHARTS}/observability-operators" -n openshift-operators \

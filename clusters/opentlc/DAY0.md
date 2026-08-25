@@ -79,4 +79,6 @@ oc get storageclass
 
 ## 7. TLS / cert-manager
 
-Wave 1 installs cert-manager. MaaS is exposed with an OpenShift Route (`edge`) on `maas.apps.cluster-6f7dh.6f7dh.sandbox3519.opentlc.com`. If RHDP already has cert-manager, set `install-cert-manager.enabled: false`.
+Wave 1 installs the cert-manager operator into `cert-manager-operator`. OpenTLC usually **already created that namespace**; the chart skips the Namespace (and OperatorGroup) when they exist so Helm does not try to import them. MaaS is exposed with an OpenShift Route (`edge`) on `maas.apps.cluster-6f7dh.6f7dh.sandbox3519.opentlc.com`.
+
+If the operator CSV is already `Succeeded`, set `install-cert-manager.enabled: false` instead of reinstalling.

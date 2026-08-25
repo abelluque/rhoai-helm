@@ -109,6 +109,8 @@ No ejecutar `helm dependency update` ni `helm upgrade` de `nvidia-gpu-enablement
 
 ## 2. Wave 1 — cert-manager, observabilidad, GitOps, Pipelines, PVCs
 
+El namespace `cert-manager-operator` suele existir ya en OpenTLC. El chart no lo vuelve a crear; Helm usa `--create-namespace` solo si faltara. **No** uses `--take-ownership` sobre ese Namespace: el uninstall borraría el NS de plataforma.
+
 ```bash
 helm upgrade --install cert-manager charts/cert-manager \
   -n cert-manager-operator --create-namespace \

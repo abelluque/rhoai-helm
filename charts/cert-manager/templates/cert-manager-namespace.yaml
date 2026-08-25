@@ -1,5 +1,7 @@
+{{- if not (lookup "v1" "Namespace" "" .Values.operatorNamespace) }}
 ---
 apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Values.operatorNamespace }}
+{{- end }}

@@ -1,4 +1,5 @@
-# OpenTLC/RHDP often already has cert-manager. If the install conflicts, set
-# enabled: false and add --take-ownership only when adopting the existing operator.
+# OpenTLC/RHDP pre-creates namespace cert-manager-operator. The chart skips
+# existing Namespace/OperatorGroup (lookup) so Helm does not try to import them.
+# Set enabled: false only if the cert-manager operator CSV is already Succeeded.
 install-cert-manager:
   enabled: true
