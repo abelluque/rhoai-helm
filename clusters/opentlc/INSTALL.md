@@ -125,7 +125,10 @@ Si un intento anterior dejó el release en `failed`:
 oc delete job approve-openshift-cert-manager-operator -n cert-manager-operator --ignore-not-found
 oc get sub,ip,csv -n cert-manager-operator
 oc get packagemanifest openshift-cert-manager-operator -o jsonpath='{range .status.channels[*]}{.name}{"\t"}{.currentCSV}{"\n"}{end}'
+oc get operatorgroup -n cert-manager-operator
 ```
+
+Si la Subscription queda en **Unknown** sin `currentCSV`, OLM no tiene un OperatorGroup válido (cero o más de uno). Debe haber **exactamente uno** en `cert-manager-operator`. El nombre oficial es `openshift-cert-manager-operator`.
 
 helm upgrade --install observability-operators charts/observability-operators \
   -n openshift-operators --timeout 20m \

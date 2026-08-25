@@ -2,9 +2,7 @@
 {{- if $config.namespace }}
 {{- if $config.operatorGroup }}
 {{- if $config.operatorGroup.enabled }}
-{{- $namedOg := lookup "operators.coreos.com/v1" "OperatorGroup" $config.namespace $operator }}
-{{- $ogList := lookup "operators.coreos.com/v1" "OperatorGroup" $config.namespace "" }}
-{{- if and (not $namedOg) (not (and $ogList $ogList.items)) }}
+{{- if ne (include "install-operators.namespaceHasOperatorGroup" $config.namespace | trim) "true" }}
 ---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup

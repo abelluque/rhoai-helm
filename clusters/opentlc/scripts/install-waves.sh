@@ -35,6 +35,8 @@ wait_csv openshift-opentelemetry-operator opentelemetry 600 || true
 wait_csv openshift-cluster-observability-operator cluster-observability 600 || true
 
 echo "== Wave 2: LeaderWorkerSet + RHCL (no NVIDIA) =="
+wait_ns_not_terminating openshift-lws-operator 300
+wait_ns_not_terminating kuadrant-system 300
 helm upgrade --install leaderworkerset "${CHARTS}/leaderworkerset" -n openshift-lws-operator --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/leaderworkerset/values.yaml"
 helm upgrade --install rhcl "${CHARTS}/rhcl" -n kuadrant-system --create-namespace \

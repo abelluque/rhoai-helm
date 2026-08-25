@@ -64,7 +64,26 @@ wait_csv() {
     elapsed=$((elapsed + 10))
   done
   echo "Timed out waiting for CSV ${grep_name} in ${ns}" >&2
-  oc get csv -n "${ns}" || true
+  oc get csv,sub,og,ip -n "${ns}" || true
+  return 1
+}
+
+wait_ns_not_terminating() {
+  local ns="$1"
+  local timeout="${2:-300}"
+  local elapsed=0
+  local phase
+  while (( elapsed < timeout )); do
+    phase="$(oc get ns "${ns}" -o jsonpath='{.status.phase}' 2>/dev/null || echo Missing)"
+    if [[ "${phase}" != "Terminating" ]]; then
+      return 0
+    fi
+    echo "Waiting for namespace ${ns} to finish terminating..."
+    sleep 5
+    elapsed=$((elapsed + 5))
+  done
+  echo "Namespace ${ns} still Terminating after ${timeout}s" >&2
+  oc get ns "${ns}" -o yaml 2>/dev/null | tail -50 >&2 || true
   return 1
 }
 
