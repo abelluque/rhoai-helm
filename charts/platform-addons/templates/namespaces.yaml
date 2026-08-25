@@ -1,5 +1,5 @@
 {{- range $ns := list .Values.modelRegistry.namespace "rhods-notebooks" "openshift-pipelines" "openshift-gitops-operator" "openshift-gitops" }}
-{{- if not (lookup "v1" "Namespace" "" $ns) }}
+{{- if eq (include "install-operators.shouldRenderNamespace" (dict "ns" $ns "root" $) | trim) "true" }}
 ---
 apiVersion: v1
 kind: Namespace

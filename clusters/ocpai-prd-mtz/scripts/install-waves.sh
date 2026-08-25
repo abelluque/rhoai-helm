@@ -32,9 +32,9 @@ wait_csv openshift-opentelemetry-operator opentelemetry 600 || true
 wait_csv openshift-cluster-observability-operator cluster-observability 600 || true
 
 echo "== Wave 2: NVIDIA GPU + LeaderWorkerSet + RHCL =="
-wait_ns_not_terminating openshift-nfd 300
-wait_ns_not_terminating openshift-lws-operator 300
-wait_ns_not_terminating kuadrant-system 300
+wait_ns_not_terminating openshift-nfd 900
+wait_ns_not_terminating openshift-lws-operator 900
+wait_ns_not_terminating kuadrant-system 900
 helm upgrade --install nvidia-gpu-enablement "${CHARTS}/nvidia-gpu-enablement" -n openshift-nfd --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/nvidia-gpu-enablement/values.yaml"
 helm upgrade --install leaderworkerset "${CHARTS}/leaderworkerset" -n openshift-lws-operator --create-namespace \

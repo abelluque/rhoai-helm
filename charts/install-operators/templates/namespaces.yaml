@@ -1,5 +1,5 @@
 {{- range $operator, $config := .Values.operators }}
-{{- if and $config.namespace (not (lookup "v1" "Namespace" "" $config.namespace)) }}
+{{- if and $config.namespace (eq (include "install-operators.shouldRenderNamespace" (dict "ns" $config.namespace "root" $) | trim) "true") }}
 ---
 apiVersion: v1
 kind: Namespace

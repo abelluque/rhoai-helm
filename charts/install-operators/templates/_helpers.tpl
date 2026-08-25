@@ -77,6 +77,28 @@ would look like a match and Helm would drop the OG from the release.
 {{- end }}
 
 {{/*
+Render a Namespace if it does not exist, or if this Helm release already owns it.
+Skipping a Helm-owned Namespace on upgrade deletes it (Terminating) and hooks fail.
+Do not render (adopt) a pre-existing platform Namespace.
+*/}}
+{{- define "install-operators.shouldRenderNamespace" -}}
+{{- $ns := .ns -}}
+{{- $root := .root -}}
+{{- $obj := lookup "v1" "Namespace" "" $ns -}}
+{{- if not $obj -}}
+true
+{{- else -}}
+{{- $ann := dict -}}
+{{- if and $obj.metadata $obj.metadata.annotations -}}
+{{- $ann = $obj.metadata.annotations -}}
+{{- end -}}
+{{- if eq (index $ann "meta.helm.sh/release-name") $root.Release.Name -}}
+true
+{{- end -}}
+{{- end -}}
+{{- end }}
+
+{{/*
 Subscription manifest
 */}}
 {{- define "install-operators.subscription" -}}
