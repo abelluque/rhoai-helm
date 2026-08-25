@@ -7,15 +7,17 @@ scheduling:
 install-platform-operators:
   enabled: true
   operators:
+    # channel latest: do not pin startingCSV. Manual without startingCSV fails
+    # helm template (install-operators.subscription).
     openshift-gitops-operator:
       channel: latest
-      installPlanApproval: Manual
+      installPlanApproval: Automatic
       namespace: openshift-gitops-operator
       operatorGroup:
         enabled: true
     openshift-pipelines-operator-rh:
       channel: latest
-      installPlanApproval: Manual
+      installPlanApproval: Automatic
       namespace: openshift-operators
       operatorGroup:
         enabled: false
