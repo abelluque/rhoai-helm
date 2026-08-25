@@ -23,9 +23,12 @@ helm upgrade --install observability-operators "${CHARTS}/observability-operator
 helm upgrade --install platform-addons "${CHARTS}/platform-addons" -n rhoai-model-registries --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/platform-addons/values.yaml" \
   --set modelRegistry.createCR=false
-./clusters/ocpai-prd-mtz/scripts/approve-installplans.sh cert-manager-operator openshift-operators openshift-gitops-operator || true
+./clusters/ocpai-prd-mtz/scripts/approve-installplans.sh cert-manager-operator openshift-operators openshift-gitops-operator \
+  openshift-tempo-operator openshift-opentelemetry-operator openshift-cluster-observability-operator || true
 wait_csv cert-manager-operator cert-manager-operator 600 || true
-wait_csv openshift-operators 'tempo|opentelemetry|cluster-observability' 600 || true
+wait_csv openshift-tempo-operator tempo 600 || true
+wait_csv openshift-opentelemetry-operator opentelemetry 600 || true
+wait_csv openshift-cluster-observability-operator cluster-observability 600 || true
 
 echo "== Wave 2: NVIDIA GPU + LeaderWorkerSet + RHCL =="
 helm upgrade --install nvidia-gpu-enablement "${CHARTS}/nvidia-gpu-enablement" -n openshift-nfd --create-namespace \

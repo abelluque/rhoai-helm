@@ -129,6 +129,25 @@ helm upgrade --install platform-addons charts/platform-addons \
   --set modelRegistry.createCR=false
 ```
 
+El Job `patch-perses-operator-resources` **no debe bloquear** este Helm (COO-784 está corregido desde COO 1.1.1). Si un intento anterior dejó el release en `failed` y el Job en `InProgress`, borrar el Job y reintentar:
+
+```bash
+oc delete job patch-perses-operator-resources -n openshift-cluster-observability-operator --ignore-not-found
+helm history observability-operators -n openshift-operators
+```
+
+Cómo inspeccionar el hook a mano:
+
+```bash
+oc get job,pods -n openshift-cluster-observability-operator -l job-name=patch-perses-operator-resources
+oc logs -n openshift-cluster-observability-operator -l job-name=patch-perses-operator-resources --tail=80
+oc get sub,csv,ip,deploy,pods -n openshift-cluster-observability-operator
+oc get sub,csv,ip -n openshift-tempo-operator
+oc get sub,csv,ip -n openshift-opentelemetry-operator
+```
+
+Los CSV de Tempo/COO/OTel viven en esos namespaces, no en `openshift-operators`.
+
 StorageClass del lab: `gp3-csi` (RWO). No se crea Nutanix Files.
 
 ## 3. Wave 2 — LeaderWorkerSet y Connectivity Link (sin NVIDIA)

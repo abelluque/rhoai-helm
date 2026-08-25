@@ -6,8 +6,9 @@ DEPLOYMENT="${PERSES_DEPLOYMENT:-perses-operator}"
 CONTAINER="${PERSES_CONTAINER:-perses-operator}"
 COO_SUBSCRIPTION="${COO_SUBSCRIPTION:-cluster-observability-operator}"
 COO_CSV_FALLBACK="${COO_CSV:-}"
-WAIT_TIMEOUT="${WAIT_TIMEOUT:-900}"
-VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-120}"
+WAIT_TIMEOUT="${WAIT_TIMEOUT:-90}"
+VERIFY_TIMEOUT="${VERIFY_TIMEOUT:-60}"
+BEST_EFFORT="${BEST_EFFORT:-true}"
 MEMORY_REQUEST="${CONTROLLER_MEMORY_REQUEST:?CONTROLLER_MEMORY_REQUEST required}"
 MEMORY_LIMIT="${CONTROLLER_MEMORY_LIMIT:?CONTROLLER_MEMORY_LIMIT required}"
 CPU_REQUEST="${CONTROLLER_CPU_REQUEST:?CONTROLLER_CPU_REQUEST required}"
@@ -19,6 +20,16 @@ RESOURCES_JSON=$(jq -cn \
   --arg cr "${CPU_REQUEST}" \
   --arg cl "${CPU_LIMIT}" \
   '{requests: {memory: $mr, cpu: $cr}, limits: {memory: $ml, cpu: $cl}}')
+
+give_up() {
+  local msg="$1"
+  if [ "${BEST_EFFORT}" = "true" ]; then
+    echo "WARNING: ${msg}; skipping so Helm is not blocked (COO-784 is fixed in COO 1.1.1+)" >&2
+    exit 0
+  fi
+  echo "Error: ${msg}" >&2
+  exit 1
+}
 
 resources_equal() {
   local current="$1"
@@ -38,8 +49,7 @@ wait_for() {
 
   while ! eval "${check_cmd}" >/dev/null 2>&1; do
     if [ "${elapsed}" -ge "${WAIT_TIMEOUT}" ]; then
-      echo "Timed out after ${WAIT_TIMEOUT}s waiting for ${description}" >&2
-      exit 1
+      give_up "timed out after ${WAIT_TIMEOUT}s waiting for ${description}"
     fi
     sleep 5
     elapsed=$((elapsed + 5))
@@ -104,11 +114,10 @@ wait_for_coo_csv() {
     fi
     if [ "${elapsed}" -ge "${WAIT_TIMEOUT}" ]; then
       if [ -n "${COO_CSV_FALLBACK}" ]; then
-        echo "Timed out after ${WAIT_TIMEOUT}s waiting for pinned CSV ${COO_CSV_FALLBACK}" >&2
+        give_up "timed out after ${WAIT_TIMEOUT}s waiting for pinned CSV ${COO_CSV_FALLBACK}"
       else
-        echo "Timed out after ${WAIT_TIMEOUT}s waiting for COO CSV from subscription ${COO_SUBSCRIPTION}" >&2
+        give_up "timed out after ${WAIT_TIMEOUT}s waiting for COO CSV from subscription ${COO_SUBSCRIPTION}"
       fi
-      exit 1
     fi
     echo "Waiting for COO CSV..."
     sleep 5
@@ -213,8 +222,7 @@ verify_resources_stable() {
   done
 
   CURRENT=$(deployment_resources)
-  echo "Error: ${DEPLOYMENT} resources not stable after ${VERIFY_TIMEOUT}s (current=${CURRENT})" >&2
-  exit 1
+  give_up "${DEPLOYMENT} resources not stable after ${VERIFY_TIMEOUT}s (current=${CURRENT})"
 }
 
 # COO ships perses-operator from its CSV; patch CSV first so reconcile loops stop reverting.

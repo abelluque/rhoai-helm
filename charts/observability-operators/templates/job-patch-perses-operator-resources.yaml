@@ -54,8 +54,8 @@ metadata:
     helm.sh/hook-weight: "2"
     helm.sh/hook-delete-policy: before-hook-creation
 spec:
-  backoffLimit: 12
-  activeDeadlineSeconds: 1140
+  backoffLimit: 1
+  activeDeadlineSeconds: 300
   template:
     spec:
       serviceAccountName: patch-perses-operator-resources
@@ -76,6 +76,12 @@ spec:
               value: {{ $resourcesPatch.csvName | quote }}
             - name: COO_SUBSCRIPTION
               value: {{ $resourcesPatch.subscription | quote }}
+            - name: WAIT_TIMEOUT
+              value: "90"
+            - name: VERIFY_TIMEOUT
+              value: "60"
+            - name: BEST_EFFORT
+              value: "true"
             - name: CONTROLLER_MEMORY_REQUEST
               value: {{ $resourcesPatch.requests.memory | quote }}
             - name: CONTROLLER_MEMORY_LIMIT

@@ -44,7 +44,12 @@ Cluster values may omit persesOperator entirely or only override nested fields.
 {{- $operators := $installObs.operators | default dict }}
 {{- $coo := index $operators "cluster-observability-operator" | default dict }}
 {{- $csvPatch := (.Values.csvPatch | default dict) }}
-enabled: {{ default true $configured.enabled }}
+{{- /* Helm `default` treats false as empty, so enabled: false would stay true. */}}
+{{- if hasKey $configured "enabled" }}
+enabled: {{ $configured.enabled }}
+{{- else }}
+enabled: true
+{{- end }}
 namespace: {{ default (default "openshift-cluster-observability-operator" $coo.namespace) $configured.namespace }}
 deployment: {{ default "perses-operator" $configured.deployment }}
 container: {{ default "perses-operator" $configured.container }}

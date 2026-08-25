@@ -16,3 +16,8 @@ install-observability:
 
 csvPatch:
   csvName: ""
+
+# COO-784 is fixed in COO 1.1.1+. Do not block Helm on perses-operator.
+persesOperator:
+  resourcesPatch:
+    enabled: false
