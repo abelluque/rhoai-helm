@@ -28,6 +28,7 @@ spec:
   {{- end }}
   listeners:
     {{- range $lname, $listener := $gw.listeners }}
+    {{- if $listener }}
     - name: {{ $lname }}
       hostname: {{ tpl $listener.hostname $ | quote }}
       port: {{ $listener.port }}
@@ -43,5 +44,6 @@ spec:
         namespaces:
           from: All
       {{- end }}
+    {{- end }}
     {{- end }}
 {{- end }}

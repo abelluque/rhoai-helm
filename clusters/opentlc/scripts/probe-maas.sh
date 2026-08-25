@@ -40,21 +40,39 @@ if obj is None:
 print(obj if not isinstance(obj, (dict, list)) else json.dumps(obj))' "$@"
 }
 
+CURL_OPTS=(-skS --http1.1 --ipv4 --connect-timeout 20 --max-time 120)
+
 curl_json() {
   local method="$1" url="$2" body="${3:-}" token="$4"
-  local tmp code
+  local tmp err code
   tmp="$(mktemp)"
+  err="$(mktemp)"
   if [[ -n "${body}" ]]; then
-    code="$(curl -skS -o "${tmp}" -w "%{http_code}" -X "${method}" "${url}" \
+    code="$(curl "${CURL_OPTS[@]}" -o "${tmp}" -w "%{http_code}" -X "${method}" "${url}" \
       -H "Authorization: Bearer ${token}" \
       -H "Content-Type: application/json" \
-      -d "${body}")" || true
+      -d "${body}" 2>"${err}")" || true
   else
-    code="$(curl -skS -o "${tmp}" -w "%{http_code}" -X "${method}" "${url}" \
+    code="$(curl "${CURL_OPTS[@]}" -o "${tmp}" -w "%{http_code}" -X "${method}" "${url}" \
       -H "Authorization: Bearer ${token}" \
-      -H "Content-Type: application/json")" || true
+      -H "Content-Type: application/json" 2>"${err}")" || true
   fi
+  if [[ -s "${err}" ]]; then
+    echo "  curl: $(tr '\n' ' ' < "${err}")" >&2
+  fi
+  rm -f "${err}"
   echo "${code}" "${tmp}"
+}
+
+dump_gateway() {
+  echo "== Gateway / Route diagnostics ==" >&2
+  oc get gateway maas-default-gateway -n openshift-ingress -o wide 2>&1 >&2 || true
+  oc get gateway maas-default-gateway -n openshift-ingress \
+    -o jsonpath='{range .status.listeners[*]}{.name}{" protocol="}{.supportedKinds}{" attached="}{.attachedRoutes}{"\n"}{end}' 2>/dev/null >&2 || true
+  oc describe gateway maas-default-gateway -n openshift-ingress 2>&1 | grep -A2 -E 'Listeners|Hostname|Programmed|ResolvedRefs|NoCertificate|secret' >&2 || true
+  oc get route -n openshift-ingress 2>&1 >&2 || true
+  oc get secret maas-default-gateway-tls -n openshift-ingress 2>&1 >&2 || true
+  oc get svc -n openshift-ingress -l gateway.networking.k8s.io/gateway-name=maas-default-gateway 2>&1 >&2 || true
 }
 
 fail=0
@@ -83,6 +101,12 @@ if [[ -z "${MAAS_API_KEY:-}" ]]; then
   echo "${mint_body_out}" | python3 -m json.tool 2>/dev/null || echo "${mint_body_out}"
   if [[ "${mint_code}" != "200" && "${mint_code}" != "201" ]]; then
     echo "FAIL minting API key (HTTP ${mint_code})" >&2
+    dump_gateway
+    echo >&2
+    echo "If listeners still include https without a TLS Secret, re-apply wave 3:" >&2
+    echo "  helm upgrade --install gateway-api charts/gateway-api -n openshift-ingress \\" >&2
+    echo "    -f clusters/opentlc/cluster.yaml \\" >&2
+    echo "    -f clusters/opentlc/platform/values/gateway-api/values.yaml" >&2
     exit 1
   fi
   MAAS_API_KEY="$(echo "${mint_body_out}" | json_field key)"

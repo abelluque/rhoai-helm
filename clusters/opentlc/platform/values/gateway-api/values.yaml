@@ -1,20 +1,13 @@
 # External MaaS hostname: maas.apps.cluster-6f7dh.6f7dh.sandbox3519.opentlc.com
-# TLS: OpenShift Route (edge) using the cluster ingress certificate.
+# TLS terminates on the OpenShift Route (edge, cluster wildcard cert). Do not
+# declare a Gateway HTTPS listener without a Secret: the Ingress Operator then
+# creates a passthrough Route to :443 and curl fails with SSL_ERROR_SYSCALL.
 gateways:
   maas-default-gateway:
     listeners:
       http:
         hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
-      https:
-        hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
-        certificate:
-          create: false
-          secretName: maas-default-gateway-tls
-        tls:
-          certificateRefs:
-            - group: ""
-              kind: Secret
-              name: maas-default-gateway-tls
+      https: null
 
 route:
   create: true
