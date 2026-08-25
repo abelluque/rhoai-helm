@@ -68,11 +68,17 @@ spec:
     containers:
       - name: main
         image: {{ include "llminferenceservice.image" . }}
-        {{- with .Values.model.args }}
+        {{- if or .Values.model.args .Values.env }}
         env:
+          {{- with .Values.model.args }}
           - name: VLLM_ADDITIONAL_ARGS
             value: >-
               {{- join " " . | wrap 106 | nindent 14 }}
+          {{- end }}
+          {{- range $name, $value := .Values.env }}
+          - name: {{ $name }}
+            value: {{ $value | quote }}
+          {{- end }}
         {{- end }}
         {{- if or .Values.huggingface.token .Values.huggingface.existingSecret }}
         envFrom:

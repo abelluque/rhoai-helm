@@ -68,6 +68,9 @@ huggingface:
 modelType: generative
 enableAuth: true
 
+# Extra container env (e.g. VLLM_CPU_KVCACHE_SPACE for CPU backends).
+env: {}
+
 genaiAsset:
   enabled: true
   useCase: chat

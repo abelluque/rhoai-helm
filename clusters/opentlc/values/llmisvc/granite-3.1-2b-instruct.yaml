@@ -32,6 +32,12 @@ model:
     - --enforce-eager
     - --dtype=float32
 
+# vLLM 0.18 CPU defaults KV cache to ~50% of node RAM (~201k tokens here) and
+# OOMs after loading weights. Cap cache and OpenMP threads to the pod budget.
+env:
+  VLLM_CPU_KVCACHE_SPACE: "4"
+  VLLM_CPU_OMP_THREADS_BIND: "0-3"
+
 replicas: 1
 
 hardwareProfile:
