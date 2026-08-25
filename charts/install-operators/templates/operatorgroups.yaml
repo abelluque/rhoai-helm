@@ -2,6 +2,9 @@
 {{- if $config.namespace }}
 {{- if $config.operatorGroup }}
 {{- if $config.operatorGroup.enabled }}
+{{- $namedOg := lookup "operators.coreos.com/v1" "OperatorGroup" $config.namespace $operator }}
+{{- $ogList := lookup "operators.coreos.com/v1" "OperatorGroup" $config.namespace "" }}
+{{- if and (not $namedOg) (not (and $ogList $ogList.items)) }}
 ---
 apiVersion: operators.coreos.com/v1
 kind: OperatorGroup
@@ -16,6 +19,7 @@ spec:
   targetNamespaces:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}

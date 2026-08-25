@@ -139,6 +139,8 @@ helm upgrade --install platform-addons charts/platform-addons \
   --set modelRegistry.createCR=false
 ```
 
+OpenTLC/RHDP suele pre-crear `openshift-gitops-operator` (y a veces `openshift-gitops` / `openshift-pipelines`). El chart **no** adopta esos Namespaces (`lookup`); **no** uses `--take-ownership` o un uninstall borraría namespaces de plataforma.
+
 El Job `patch-perses-operator-resources` **no debe bloquear** este Helm (COO-784 está corregido desde COO 1.1.1). Si un intento anterior dejó el release en `failed` y el Job en `InProgress`, borrar el Job y reintentar:
 
 ```bash
