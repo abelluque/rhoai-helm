@@ -3,9 +3,10 @@
      DSCInitialization operator; do not create it here — a Namespace in this release would
      fight Helm ownership with maas-postgres and leave the ns Terminating.
 
-     monitoring.namespace MUST be a regular resource, not a pre-install hook: wave 5 runs
-     helm --no-hooks first, and patch-controller-resources RBAC lives in this namespace. */}}
-{{- if .monitoring.namespace }}
+     monitoring.namespace is a regular resource (not a pre-install hook) so wave 5
+     helm --no-hooks can apply patch-controller-resources RBAC. Skip if the NS already
+     exists and is not owned by this release (prior hook / DSCI). */}}
+{{- if and .monitoring.namespace (eq (include "install-operators.shouldRenderNamespace" (dict "ns" .monitoring.namespace "root" $) | trim) "true") }}
 apiVersion: v1
 kind: Namespace
 metadata:
