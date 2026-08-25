@@ -8,3 +8,9 @@ install-rhcl:
 
 csvPatch:
   csvName: ""
+
+# 3Gi controller patch is for OOM on large clusters. Do not block Helm on the
+# OpenTLC lab while kuadrant-operator-controller-manager is still coming up.
+kuadrantOperator:
+  resourcesPatch:
+    enabled: false

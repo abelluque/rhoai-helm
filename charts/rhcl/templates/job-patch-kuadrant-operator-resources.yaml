@@ -20,7 +20,7 @@ rules:
     resources: ["deployments"]
     verbs: ["get", "list", "watch", "patch", "update"]
   - apiGroups: ["operators.coreos.com"]
-    resources: ["clusterserviceversions"]
+    resources: ["clusterserviceversions", "subscriptions"]
     verbs: ["get", "list", "watch", "patch", "update"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -52,7 +52,8 @@ metadata:
     helm.sh/hook-weight: "2"
     helm.sh/hook-delete-policy: before-hook-creation
 spec:
-  backoffLimit: 6
+  backoffLimit: 1
+  activeDeadlineSeconds: 240
   template:
     spec:
       serviceAccountName: patch-kuadrant-operator-resources
@@ -67,6 +68,10 @@ spec:
               value: {{ .Values.kuadrant.namespace | quote }}
             - name: RHCL_CSV
               value: {{ .Values.csvPatch.csvName | quote }}
+            - name: WAIT_TIMEOUT
+              value: "90"
+            - name: BEST_EFFORT
+              value: "true"
             - name: CONTROLLER_MEMORY_REQUEST
               value: {{ $resourcesPatch.requests.memory | quote }}
             - name: CONTROLLER_MEMORY_LIMIT

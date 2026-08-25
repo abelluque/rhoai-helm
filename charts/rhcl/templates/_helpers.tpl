@@ -58,7 +58,12 @@ Cluster values may omit kuadrantOperator entirely or only override nested fields
 {{- $configured := (.Values.kuadrantOperator | default dict).resourcesPatch | default dict }}
 {{- $requests := $configured.requests | default dict }}
 {{- $limits := $configured.limits | default dict }}
-enabled: {{ default true $configured.enabled }}
+{{- /* Helm `default` treats false as empty, so enabled: false would stay true. */}}
+{{- if hasKey $configured "enabled" }}
+enabled: {{ $configured.enabled }}
+{{- else }}
+enabled: true
+{{- end }}
 requests:
   memory: {{ default "3Gi" $requests.memory }}
   cpu: {{ default "200m" $requests.cpu }}
