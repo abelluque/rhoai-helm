@@ -40,7 +40,49 @@ if obj is None:
 print(obj if not isinstance(obj, (dict, list)) else json.dumps(obj))' "$@"
 }
 
-CURL_OPTS=(-skS --http1.1 --ipv4 --connect-timeout 20 --max-time 120)
+CURL_OPTS=(-skS --http1.1 --connect-timeout 20 --max-time 120)
+
+http_code() {
+  local url="$1"
+  shift
+  curl -skS --http1.1 --connect-timeout 8 --max-time 15 -o /dev/null -w "%{http_code}" "$@" "${url}" 2>/dev/null || echo "000"
+}
+
+# Gateway Service is LoadBalancer:80 only. https://maas.apps.*:443 times out when
+# traffic never reaches the OpenShift router. Fall back to the Gateway ELB on
+# HTTP/80 with the public Host header so Envoy matches the listener hostname.
+select_base_url() {
+  local code addr
+  echo "  probing https://${HOST}/" >&2
+  code="$(http_code "https://${HOST}/")"
+  if [[ "${code}" != "000" ]]; then
+    echo "  using https://${HOST} (HTTP ${code})" >&2
+    echo "https://${HOST}"
+    return
+  fi
+  echo "  https://${HOST} timed out" >&2
+
+  echo "  probing http://${HOST}/ (no redirect follow)" >&2
+  code="$(http_code "http://${HOST}/")"
+  if [[ "${code}" != "000" && "${code}" != "301" && "${code}" != "302" && "${code}" != "307" && "${code}" != "308" ]]; then
+    echo "  using http://${HOST} (HTTP ${code})" >&2
+    echo "http://${HOST}"
+    return
+  fi
+
+  addr="$(oc get gateway maas-default-gateway -n openshift-ingress -o jsonpath='{.status.addresses[0].value}' 2>/dev/null || true)"
+  if [[ -n "${addr}" ]]; then
+    echo "  probing http://${addr}/ Host=${HOST}" >&2
+    code="$(http_code "http://${addr}/" -H "Host: ${HOST}")"
+    if [[ "${code}" != "000" ]]; then
+      echo "  using http://${addr} (HTTP ${code})" >&2
+      echo "http://${addr}"
+      return
+    fi
+    echo "  Gateway ELB http://${addr} also failed (HTTP ${code})" >&2
+  fi
+  echo "https://${HOST}"
+}
 
 curl_json() {
   local method="$1" url="$2" body="${3:-}" token="$4"
@@ -49,11 +91,13 @@ curl_json() {
   err="$(mktemp)"
   if [[ -n "${body}" ]]; then
     code="$(curl "${CURL_OPTS[@]}" -o "${tmp}" -w "%{http_code}" -X "${method}" "${url}" \
+      -H "Host: ${HOST}" \
       -H "Authorization: Bearer ${token}" \
       -H "Content-Type: application/json" \
       -d "${body}" 2>"${err}")" || true
   else
     code="$(curl "${CURL_OPTS[@]}" -o "${tmp}" -w "%{http_code}" -X "${method}" "${url}" \
+      -H "Host: ${HOST}" \
       -H "Authorization: Bearer ${token}" \
       -H "Content-Type: application/json" 2>"${err}")" || true
   fi
@@ -77,12 +121,14 @@ dump_gateway() {
 
 fail=0
 HOST="$(maas_host)"
-MAAS_API="https://${HOST}/maas-api"
 OC_TOKEN="$(oc whoami -t)"
 
 echo "== MaaS host =="
 echo "  ${HOST}"
 echo "  user: $(oc whoami)"
+BASE_URL="$(select_base_url)"
+MAAS_API="${BASE_URL}/maas-api"
+echo "  base: ${BASE_URL}"
 
 if [[ -z "${MAAS_API_KEY:-}" ]]; then
   echo "== Mint API key =="
@@ -103,10 +149,9 @@ if [[ -z "${MAAS_API_KEY:-}" ]]; then
     echo "FAIL minting API key (HTTP ${mint_code})" >&2
     dump_gateway
     echo >&2
-    echo "If listeners still include https without a TLS Secret, re-apply wave 3:" >&2
-    echo "  helm upgrade --install gateway-api charts/gateway-api -n openshift-ingress \\" >&2
-    echo "    -f clusters/opentlc/cluster.yaml \\" >&2
-    echo "    -f clusters/opentlc/platform/values/gateway-api/values.yaml" >&2
+    echo "The Gateway Service only listens on :80. If https://${HOST}:443 times out," >&2
+    echo "the probe should fall back to the Gateway LoadBalancer HTTP address." >&2
+    echo "Check: oc get gateway,route,svc -n openshift-ingress" >&2
     exit 1
   fi
   MAAS_API_KEY="$(echo "${mint_body_out}" | json_field key)"
@@ -122,7 +167,7 @@ fi
 
 echo
 echo "== GET /v1/models =="
-read -r models_code models_file < <(curl_json GET "https://${HOST}/v1/models" "" "${MAAS_API_KEY}")
+read -r models_code models_file < <(curl_json GET "${BASE_URL}/v1/models" "" "${MAAS_API_KEY}")
 models_out="$(cat "${models_file}")"
 rm -f "${models_file}"
 echo "  HTTP ${models_code}"
@@ -139,7 +184,7 @@ chat_body="$(python3 -c 'import json,sys; print(json.dumps({
     "messages": [{"role": "user", "content": sys.argv[2]}],
     "max_tokens": int(sys.argv[3]),
 }))' "${MODEL}" "${PROMPT}" "${MAX_TOKENS}")"
-read -r chat_code chat_file < <(curl_json POST "https://${HOST}/v1/chat/completions" "${chat_body}" "${MAAS_API_KEY}")
+read -r chat_code chat_file < <(curl_json POST "${BASE_URL}/v1/chat/completions" "${chat_body}" "${MAAS_API_KEY}")
 chat_out="$(cat "${chat_file}")"
 rm -f "${chat_file}"
 echo "  HTTP ${chat_code}"
