@@ -117,6 +117,16 @@ helm upgrade --install cert-manager charts/cert-manager \
   -f $CLUSTER/cluster.yaml \
   -f $CLUSTER/platform/values/cert-manager/values.yaml
 
+El overlay OpenTLC usa `installPlanApproval: Automatic` sin `startingCSV`. El pin `cert-manager-operator.v1.19.0` del chart no suele existir en el catálogo del sandbox; el Job `approve-openshift-cert-manager-operator` espera un InstallPlan que nunca aparece.
+
+Si un intento anterior dejó el release en `failed`:
+
+```bash
+oc delete job approve-openshift-cert-manager-operator -n cert-manager-operator --ignore-not-found
+oc get sub,ip,csv -n cert-manager-operator
+oc get packagemanifest openshift-cert-manager-operator -o jsonpath='{range .status.channels[*]}{.name}{"\t"}{.currentCSV}{"\n"}{end}'
+```
+
 helm upgrade --install observability-operators charts/observability-operators \
   -n openshift-operators --timeout 20m \
   -f $CLUSTER/cluster.yaml \

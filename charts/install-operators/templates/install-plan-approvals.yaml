@@ -73,7 +73,8 @@ metadata:
     helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-delete-policy: before-hook-creation
 spec:
-  backoffLimit: 4
+  backoffLimit: 1
+  activeDeadlineSeconds: 270
   template:
     spec:
       serviceAccountName: approve-{{ $operator }}

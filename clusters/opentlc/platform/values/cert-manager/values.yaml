@@ -1,5 +1,13 @@
 # OpenTLC/RHDP pre-creates namespace cert-manager-operator. The chart skips
 # existing Namespace/OperatorGroup (lookup) so Helm does not try to import them.
 # Set enabled: false only if the cert-manager operator CSV is already Succeeded.
+#
+# Do not pin cert-manager-operator.v1.19.0: that CSV is often absent from the
+# 4.20 sandbox catalog. Manual + missing startingCSV leaves the
+# approve-openshift-cert-manager-operator Helm hook InProgress forever.
 install-cert-manager:
   enabled: true
+  operators:
+    openshift-cert-manager-operator:
+      installPlanApproval: Automatic
+      startingCSV: null
