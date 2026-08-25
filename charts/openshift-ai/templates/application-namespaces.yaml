@@ -1,12 +1,16 @@
 {{- with .Values.dataScienceClusterInitialization }}
 {{- /* applicationsNamespace is created by wave 4 (maas-postgres --create-namespace) or by the
-     DSCInitialization operator; do not create it here — a pre-install Namespace hook would
-     fight Helm ownership with the maas-postgres release and leave the ns Terminating. */ -}}
+     DSCInitialization operator; do not create it here — a Namespace in this release would
+     fight Helm ownership with maas-postgres and leave the ns Terminating.
+
+     monitoring.namespace MUST be a regular resource, not a pre-install hook: wave 5 runs
+     helm --no-hooks first, and patch-controller-resources RBAC lives in this namespace. */}}
+{{- if .monitoring.namespace }}
 apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .monitoring.namespace }}
-  annotations:
-    helm.sh/hook: pre-install
-    helm.sh/hook-weight: "-10"
+  labels:
+    {{- include "openshift-ai.labels" $ | nindent 4 }}
+{{- end }}
 {{- end }}
