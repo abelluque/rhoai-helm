@@ -63,25 +63,12 @@ check "MaaSModelRef" oc get maasmodelref granite-3-1-2b-instruct -n ai-models
 check "MaaSSubscription" oc get maassubscription -n models-as-a-service
 check "MaaSAuthPolicy" oc get maasauthpolicy -n models-as-a-service
 
-NAME="$(python3 -c 'import yaml,sys; print(yaml.safe_load(open(sys.argv[1]))["global"]["cluster"]["name"])' "${CLUSTER}/cluster.yaml")"
-DOMAIN="$(python3 -c 'import yaml,sys; print(yaml.safe_load(open(sys.argv[1]))["global"]["cluster"]["baseDomain"])' "${CLUSTER}/cluster.yaml")"
-HOST="maas.apps.${NAME}.${DOMAIN}"
-echo
-echo "Probe MaaS (requires an API key from the MaaS dashboard):"
-echo "  curl -sk https://${HOST}/v1/models -H 'Authorization: Bearer <MAAS_API_KEY>'"
-echo "  curl -sk https://${HOST}/v1/chat/completions -H 'Authorization: Bearer <MAAS_API_KEY>' \\"
-echo "    -H 'Content-Type: application/json' \\"
-echo "    -d '{\"model\":\"granite-3-1-2b-instruct\",\"messages\":[{\"role\":\"user\",\"content\":\"hello\"}]}'"
-
-if [[ -n "${MAAS_API_KEY:-}" ]]; then
-  echo "== Live chat completions =="
-  curl -sk "https://${HOST}/v1/chat/completions" \
-    -H "Authorization: Bearer ${MAAS_API_KEY}" \
-    -H "Content-Type: application/json" \
-    -d '{"model":"granite-3-1-2b-instruct","messages":[{"role":"user","content":"Reply with pong"}],"max_tokens":16}' \
-    && echo || fail=1
+echo "== Live MaaS probe =="
+if "${CLUSTER}/scripts/probe-maas.sh"; then
+  echo "OK  mint API key + /v1/models + /v1/chat/completions"
 else
-  echo "Set MAAS_API_KEY to run a live inference probe."
+  echo "FAIL mint API key + /v1/models + /v1/chat/completions" >&2
+  fail=1
 fi
 
 exit "${fail}"
