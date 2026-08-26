@@ -44,7 +44,7 @@ data:
         resource.customizations.health.PersistentVolumeClaim: |
           hs = {}
           if obj.status == nil then
-            hs.status = "Progressing"
+            hs.status = "Healthy"
             hs.message = "No status"
             return hs
           end
@@ -59,6 +59,15 @@ data:
             return hs
           end
           if obj.status.phase == "Pending" then
+            local anns = {}
+            if obj.metadata ~= nil and obj.metadata.annotations ~= nil then
+              anns = obj.metadata.annotations
+            end
+            if anns["volume.beta.kubernetes.io/storage-provisioner"] == nil and anns["volume.kubernetes.io/storage-provisioner"] == nil then
+              hs.status = "Healthy"
+              hs.message = "Waiting for first consumer"
+              return hs
+            end
             if obj.status.conditions ~= nil then
               for i, c in ipairs(obj.status.conditions) do
                 if c.reason == "WaitForFirstConsumer" then
