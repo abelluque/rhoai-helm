@@ -35,6 +35,46 @@ metadata:
   name: patch-gitops-placement-script
   namespace: {{ .Values.gitops.argocdNamespace }}
 data:
+  argocd-patch.yaml: |
+    spec:
+      nodePlacement:
+        nodeSelector:
+          {{- .Values.scheduling.platform.nodeSelector | toYaml | nindent 10 }}
+      extraConfig:
+        resource.customizations.health.PersistentVolumeClaim: |
+          hs = {}
+          if obj.status == nil then
+            hs.status = "Progressing"
+            hs.message = "No status"
+            return hs
+          end
+          if obj.status.phase == "Bound" then
+            hs.status = "Healthy"
+            hs.message = "PVC is Bound"
+            return hs
+          end
+          if obj.status.phase == "Lost" then
+            hs.status = "Degraded"
+            hs.message = "PVC is Lost"
+            return hs
+          end
+          if obj.status.phase == "Pending" then
+            if obj.status.conditions ~= nil then
+              for i, c in ipairs(obj.status.conditions) do
+                if c.reason == "WaitForFirstConsumer" then
+                  hs.status = "Healthy"
+                  hs.message = "Waiting for first consumer"
+                  return hs
+                end
+              end
+            end
+            hs.status = "Progressing"
+            hs.message = "PVC is not yet Bound"
+            return hs
+          end
+          hs.status = "Unknown"
+          hs.message = obj.status.phase
+          return hs
   patch.sh: |
     #!/bin/bash
     set -euo pipefail
@@ -42,24 +82,19 @@ data:
     NAME="{{ .Values.gitops.argocdName }}"
     echo "Waiting for ArgoCD/${NAME}..."
     until oc get argocd "${NAME}" -n "${NS}" >/dev/null 2>&1; do sleep 10; done
-    oc patch argocd "${NAME}" -n "${NS}" --type merge -p '{
-      "spec": {
-        "nodePlacement": {
-          "nodeSelector": {{ .Values.scheduling.platform.nodeSelector | toJson }}
-        }
-      }
-    }'
-    echo "Patched ArgoCD nodePlacement"
+    oc patch argocd "${NAME}" -n "${NS}" --type merge --patch-file /scripts/argocd-patch.yaml
+    echo "Patched ArgoCD nodePlacement and PVC health check"
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: patch-gitops-placement
+  name: patch-gitops-argocd
   namespace: {{ .Values.gitops.argocdNamespace }}
   annotations:
     helm.sh/hook: post-install,post-upgrade
     helm.sh/hook-delete-policy: before-hook-creation
     helm.sh/hook-weight: "5"
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   backoffLimit: 12
   template:

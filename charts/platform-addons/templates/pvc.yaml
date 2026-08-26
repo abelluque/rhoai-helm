@@ -6,6 +6,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ $pvc.name }}
   namespace: {{ $pvc.namespace }}
+  annotations:
+    argocd.argoproj.io/ignore-healthcheck: "true"
   labels:
     {{- include "platform-addons.labels" $ | nindent 4 }}
     platform-addons.rhoai.io/pvc: {{ $key }}
