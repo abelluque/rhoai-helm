@@ -9,6 +9,7 @@ metadata:
   labels:
     migration.maas.opendatahub.io/from-tier: {{ $ref.tier | quote }}
   annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     migration.maas.opendatahub.io/original-tier: {{ $ref.tier | quote }}
 spec:
   modelRef:

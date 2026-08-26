@@ -3,6 +3,8 @@ apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSModelRef
 metadata:
   name: {{ include "llminferenceservice.fullname" . }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     {{- include "llminferenceservice.labels" $ | nindent 4 }}
 spec:

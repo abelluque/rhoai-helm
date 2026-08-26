@@ -3,6 +3,7 @@ apiVersion: serving.kserve.io/v1alpha1
 kind: LLMInferenceService
 metadata:
   annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     openshift.io/display-name: {{ include "llminferenceservice.displayname" . }}
     {{- with .Values.modelType }}
     opendatahub.io/model-type: {{ quote . }}

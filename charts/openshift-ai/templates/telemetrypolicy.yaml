@@ -4,6 +4,8 @@ kind: TelemetryPolicy
 metadata:
   name: maas-telemetry
   namespace: openshift-ingress
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
   labels:
     app.kubernetes.io/part-of: maas-observability
 spec:

@@ -85,6 +85,9 @@ modelRegistry:
   createCR: false
   namespace: rhoai-model-registries
   name: rhoai-registry
+  # RHOAI 3.4 forbids oauthProxy and kubeRBACProxy on the same CR. Leave
+  # oauthProxy unset (or false) to use kube-rbac-proxy, the 3.x default.
+  kubeRBACProxy: {}
   mysql:
     image: registry.redhat.io/rhel9/mysql-80:latest
     database: modelregistry

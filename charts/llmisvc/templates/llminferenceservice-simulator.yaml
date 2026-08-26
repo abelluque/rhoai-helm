@@ -5,6 +5,8 @@ kind: LLMInferenceService
 metadata:
   name: {{ $name }}
   namespace: {{ $model.namespace | default $.Values.namespace.name }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   model:
     uri: {{ $model.model.uri | quote }}

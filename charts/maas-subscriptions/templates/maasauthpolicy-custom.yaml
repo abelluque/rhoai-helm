@@ -10,6 +10,7 @@ metadata:
     migration.maas.opendatahub.io/from-tier: {{ $policy.tier | quote }}
     migration.maas.opendatahub.io/generated: "true"
   annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     migration.maas.opendatahub.io/original-tier: {{ $policy.tier | quote }}
     description: {{ $policy.description | quote }}
 spec:

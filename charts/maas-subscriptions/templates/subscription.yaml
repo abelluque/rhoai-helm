@@ -5,6 +5,7 @@ apiVersion: maas.opendatahub.io/v1alpha1
 kind: MaaSSubscription
 metadata:
   annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     openshift.io/display-name: {{ $sub.displayName | default (title $name) }}
   name: {{ $name }}
   namespace: models-as-a-service

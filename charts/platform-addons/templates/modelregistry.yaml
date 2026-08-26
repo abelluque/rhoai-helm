@@ -7,10 +7,19 @@ metadata:
   namespace: {{ .Values.modelRegistry.namespace }}
   labels:
     {{- include "platform-addons.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   grpc: {}
   rest: {}
-  oauthProxy: {}
+  {{- /* RHOAI 3.4 CRD: oauthProxy and kubeRBACProxy are mutually exclusive. */}}
+  {{- if .Values.modelRegistry.oauthProxy }}
+  oauthProxy:
+    {{- toYaml .Values.modelRegistry.oauthProxy | nindent 4 }}
+  {{- else }}
+  kubeRBACProxy:
+    {{- toYaml (.Values.modelRegistry.kubeRBACProxy | default dict) | nindent 4 }}
+  {{- end }}
   mysql:
     host: model-registry-mysql
     port: 3306
