@@ -13,6 +13,8 @@ disconnected:
     wasmInsecureRegistries: ""
     # Set to ClusterIP for lab environments that require it; omit or leave empty otherwise.
     serviceType: ""
+    # OpenShift service-ca Secret name for Gateway HTTPS (must match listener certificateRefs).
+    servingCertSecretName: ""
 
 gatewayClasses:
   openshift-default:

@@ -1,19 +1,40 @@
-# External MaaS hostname: maas.apps.cluster-6f7dh.6f7dh.sandbox3519.opentlc.com
-# TLS terminates on the OpenShift Route (edge, cluster wildcard cert). Do not
-# declare a Gateway HTTPS listener without a Secret: the Ingress Operator then
-# creates a passthrough Route to :443 and curl fails with SSL_ERROR_SYSCALL.
+# Same pattern as data-science-gateway: ClusterIP :443 + Route reencrypt
+# through router-default (the apps wildcard ELB that already has :443).
+# Do not use a public LoadBalancer :80 — https://maas.apps...:443 never
+# reaches that ELB and times out.
+disconnected:
+  gatewayConfig:
+    name: default-gateway-config
+    namespace: openshift-ingress
+    serviceType: ClusterIP
+    servingCertSecretName: maas-gw-service-tls
+
 gateways:
   maas-default-gateway:
     listeners:
-      http:
+      http: null
+      https:
         hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
-      https: null
+        port: 443
+        protocol: HTTPS
+        certificate:
+          create: false
+          secretName: maas-gw-service-tls
+        tls:
+          mode: Terminate
+          certificateRefs:
+            - group: ""
+              kind: Secret
+              name: maas-gw-service-tls
 
 route:
   create: true
   name: maas-default-gateway
   timeout: 10m
   forwardedHeaders: append
+  targetPort: 443
+  annotations:
+    router.openshift.io/service-ca-certificate: "true"
   tls:
-    termination: edge
+    termination: reencrypt
     insecureEdgeTerminationPolicy: Redirect

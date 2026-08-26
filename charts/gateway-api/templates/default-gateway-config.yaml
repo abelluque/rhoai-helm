@@ -1,10 +1,12 @@
-{{- if and .Values.disconnected.enabled .Values.disconnected.gatewayConfig.wasmInsecureRegistries }}
+{{- if (include "gateway-api.gatewayConfig.enabled" .) }}
+{{- $gc := .Values.disconnected.gatewayConfig }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Values.disconnected.gatewayConfig.name }}
-  namespace: {{ .Values.disconnected.gatewayConfig.namespace }}
+  name: {{ $gc.name }}
+  namespace: {{ $gc.namespace }}
 data:
+  {{- if and $.Values.disconnected.enabled $gc.wasmInsecureRegistries }}
   deployment: |
     spec:
       template:
@@ -13,10 +15,16 @@ data:
           - name: istio-proxy
             env:
             - name: WASM_INSECURE_REGISTRIES
-              value: {{ .Values.disconnected.gatewayConfig.wasmInsecureRegistries | quote }}
-  {{- with .Values.disconnected.gatewayConfig.serviceType }}
+              value: {{ $gc.wasmInsecureRegistries | quote }}
+  {{- end }}
+  {{- if or $gc.serviceType $gc.servingCertSecretName }}
   service: |
+    {{- if $gc.servingCertSecretName }}
+    metadata:
+      annotations:
+        service.beta.openshift.io/serving-cert-secret-name: {{ $gc.servingCertSecretName | quote }}
+    {{- end }}
     spec:
-      type: {{ . }}
+      type: {{ $gc.serviceType | default "ClusterIP" }}
   {{- end }}
 {{- end }}

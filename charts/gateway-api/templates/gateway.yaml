@@ -19,7 +19,7 @@ metadata:
   {{- end }}
 spec:
   gatewayClassName: {{ $gw.gatewayClassName }}
-  {{- if and $.Values.disconnected.enabled $.Values.disconnected.gatewayConfig.wasmInsecureRegistries }}
+  {{- if (include "gateway-api.gatewayConfig.enabled" $) }}
   infrastructure:
     parametersRef:
       group: ""

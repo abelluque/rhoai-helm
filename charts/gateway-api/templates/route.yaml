@@ -3,6 +3,7 @@
 {{- $host := printf "maas.apps.%s.%s" .Values.global.cluster.name .Values.global.cluster.baseDomain }}
 {{- $ns := $gw.namespace | default "openshift-ingress" }}
 {{- $svcName := .Values.route.serviceName | default "maas-default-gateway-openshift-default" }}
+{{- $ca := lookup "v1" "ConfigMap" "openshift-service-ca" "signing-cabundle" }}
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
@@ -22,6 +23,10 @@ spec:
   tls:
     insecureEdgeTerminationPolicy: {{ .Values.route.tls.insecureEdgeTerminationPolicy }}
     termination: {{ .Values.route.tls.termination }}
+    {{- if and (eq .Values.route.tls.termination "reencrypt") $ca }}
+    destinationCACertificate: |
+{{ index $ca.data "ca-bundle.crt" | indent 6 }}
+    {{- end }}
   to:
     kind: Service
     name: {{ $svcName }}

@@ -1,5 +1,6 @@
 {{- range $name, $gw := .Values.gateways }}
 {{- range $lname, $listener := $gw.listeners }}
+{{- if $listener }}
 {{- $cert := default dict $listener.certificate -}}
 {{- if and $listener.tls $cert.create }}
 {{- $secretName := default (index (first $listener.tls.certificateRefs) "name") $cert.secretName -}}
@@ -48,6 +49,7 @@ spec:
   privateKey:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+{{- end }}
 {{- end }}
 {{- end }}
 {{- end }}
