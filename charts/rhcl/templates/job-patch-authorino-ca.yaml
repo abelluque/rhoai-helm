@@ -1,0 +1,80 @@
+{{- if and .Values.kuadrant.create .Values.authorino.overwrite .Values.authorino.caBundle.enabled }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: patch-authorino-ca
+  namespace: {{ .Values.kuadrant.namespace }}
+  labels:
+    {{- include "rhcl.labels" . | nindent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: patch-authorino-ca
+  namespace: {{ .Values.kuadrant.namespace }}
+  labels:
+    {{- include "rhcl.labels" . | nindent 4 }}
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: patch-authorino-ca
+  namespace: {{ .Values.kuadrant.namespace }}
+  labels:
+    {{- include "rhcl.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: patch-authorino-ca
+subjects:
+  - kind: ServiceAccount
+    name: patch-authorino-ca
+    namespace: {{ .Values.kuadrant.namespace }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-authorino-ca
+  namespace: {{ .Values.kuadrant.namespace }}
+  labels:
+    {{- include "rhcl.labels" . | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "6"
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+    helm.sh/hook-weight: "6"
+spec:
+  backoffLimit: 12
+  template:
+    spec:
+      serviceAccountName: patch-authorino-ca
+      restartPolicy: Never
+      containers:
+        - name: patch-authorino-ca
+          image: {{ .Values.global.toolsImage }}
+          imagePullPolicy: IfNotPresent
+          command: ["/scripts/patch-authorino-ca.sh"]
+          env:
+            - name: KUADRANT_NAMESPACE
+              value: {{ .Values.kuadrant.namespace | quote }}
+            - name: AUTHORINO_DEPLOYMENT
+              value: {{ .Values.authorino.caBundle.deployment | quote }}
+            - name: SSL_CERT_FILE_PATH
+              value: {{ .Values.authorino.caBundle.sslCertFile | quote }}
+            - name: SERVICE_CA_VOLUME
+              value: {{ .Values.authorino.caBundle.volumeName | quote }}
+            - name: SERVICE_CA_CONFIGMAP
+              value: {{ .Values.authorino.caBundle.configMapName | quote }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: rhcl-bootstrap-scripts
+            defaultMode: 493
+{{- end }}

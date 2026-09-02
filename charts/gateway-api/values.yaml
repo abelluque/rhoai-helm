@@ -4,17 +4,30 @@ global:
     baseDomain: example.com
 
 # Disconnected cluster workaround (CONNLINK-805): optional per cluster via cluster.yaml.
-# Creates default-gateway-config in openshift-ingress for WASM shim pulls from internal artifactory.
+# Gateway ConfigMap is always created (2Gi istio-proxy). WASM env is added only when enabled.
 disconnected:
   enabled: false
   gatewayConfig:
-    name: default-gateway-config
+    name: maas-gateway-options
     namespace: openshift-ingress
     wasmInsecureRegistries: ""
-    # Set to ClusterIP for lab environments that require it; omit or leave empty otherwise.
-    serviceType: ""
+    # ClusterIP so the OpenShift Route is the only external entry (no extra LB).
+    serviceType: ClusterIP
     # OpenShift service-ca Secret name for Gateway HTTPS (must match listener certificateRefs).
+    # Leave empty when using the IngressController wildcard cert (passthrough Route).
     servingCertSecretName: ""
+    istioProxy:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: "2"
+          memory: 2Gi
+
+# IngressController defaultCertificate (wildcard *.apps). Override per cluster.
+ingressCertificate:
+  secretName: router-certs-default
 
 gatewayClasses:
   openshift-default:
@@ -39,19 +52,31 @@ gateways:
         hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
         port: 80
         protocol: HTTP
+        allowedRoutes:
+          namespaces:
+            from: Selector
+            selector:
+              matchLabels:
+                maas.opendatahub.io/gateway-access: "true"
       https:
         hostname: "maas.apps.{{ .Values.global.cluster.name }}.{{ .Values.global.cluster.baseDomain }}"
         port: 443
         protocol: HTTPS
+        allowedRoutes:
+          namespaces:
+            from: Selector
+            selector:
+              matchLabels:
+                maas.opendatahub.io/gateway-access: "true"
         tls:
           mode: Terminate
           certificateRefs:
             - group: ""
               kind: Secret
-              name: maas-default-gateway-venafi-tls
+              name: router-certs-default
         certificate:
           create: false
-          secretName: maas-default-gateway-venafi-tls
+          secretName: router-certs-default
           issuerRef:
             group: cert-manager.io
             kind: ClusterIssuer
@@ -75,10 +100,10 @@ route:
   hostname: ""  # default: maas.apps.{cluster.name}.{cluster.baseDomain}
   # Service created by the OpenShift Gateway controller; override if auto-discovery differs.
   serviceName: maas-default-gateway-openshift-default
-  targetPort: 80
+  targetPort: https
   timeout: 10m
   forwardedHeaders: append
   annotations: {}
   tls:
-    termination: edge
+    termination: passthrough
     insecureEdgeTerminationPolicy: Redirect

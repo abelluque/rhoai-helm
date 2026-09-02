@@ -1,0 +1,84 @@
+{{- if .Values.gatewayAccess.label }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: label-gateway-access
+  namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: maas-postgres
+    app.kubernetes.io/instance: {{ .Release.Name }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ .Release.Name }}-label-gateway-access
+  labels:
+    app.kubernetes.io/name: maas-postgres
+    app.kubernetes.io/instance: {{ .Release.Name }}
+rules:
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ .Release.Name }}-label-gateway-access
+  labels:
+    app.kubernetes.io/name: maas-postgres
+    app.kubernetes.io/instance: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ .Release.Name }}-label-gateway-access
+subjects:
+  - kind: ServiceAccount
+    name: label-gateway-access
+    namespace: {{ .Values.namespace }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: label-gateway-access-script
+  namespace: {{ .Values.namespace }}
+data:
+  label-gateway-access.sh: |
+{{ .Files.Get "files/label-gateway-access.sh" | indent 4 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: label-gateway-access
+  namespace: {{ .Values.namespace }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-delete-policy: before-hook-creation
+    helm.sh/hook-weight: "-1"
+spec:
+  backoffLimit: 12
+  template:
+    spec:
+      serviceAccountName: label-gateway-access
+      restartPolicy: Never
+      containers:
+        - name: label-gateway-access
+          image: {{ .Values.global.toolsImage }}
+          imagePullPolicy: IfNotPresent
+          command: ["/scripts/label-gateway-access.sh"]
+          env:
+            - name: POSTGRES_NAMESPACE
+              value: {{ .Values.namespace | quote }}
+            - name: GATEWAY_ACCESS_LABEL_KEY
+              value: {{ .Values.gatewayAccess.labelKey | quote }}
+            - name: GATEWAY_ACCESS_LABEL_VALUE
+              value: {{ .Values.gatewayAccess.labelValue | quote }}
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: label-gateway-access-script
+            defaultMode: 493
+{{- end }}

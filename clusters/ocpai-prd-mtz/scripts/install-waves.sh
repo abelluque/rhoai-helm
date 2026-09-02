@@ -50,6 +50,7 @@ wait_job openshift-nfd apply-nfd-instance 900 || true
 wait_job nvidia-gpu-operator apply-gpu-cluster-policy 900 || true
 wait_job openshift-lws-operator apply-leaderworkerset 900 || true
 wait_job kuadrant-system apply-kuadrant 900 || true
+wait_job kuadrant-system patch-authorino-ca 600 || true
 
 echo "GPU allocatable:"
 oc get nodes -o json | python3 -c '
@@ -83,6 +84,7 @@ if ! oc get secret maas-db-config -n redhat-ods-applications >/dev/null 2>&1; th
 fi
 helm upgrade --install maas-postgres "${CHARTS}/maas-postgres" -n redhat-ods-applications --create-namespace \
   -f "${CLUSTER}/cluster.yaml" -f "${CLUSTER}/platform/values/maas-postgres/values.yaml"
+wait_job redhat-ods-applications label-gateway-access 300 || true
 
 echo "== Wave 5: OpenShift AI + MaaS =="
 helm upgrade --install openshift-ai "${CHARTS}/openshift-ai" -n redhat-ods-operator --create-namespace \

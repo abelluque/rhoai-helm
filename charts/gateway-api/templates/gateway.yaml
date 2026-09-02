@@ -7,9 +7,10 @@ metadata:
   {{- with $gw.namespace }}
   namespace: {{ . }}
   {{- end }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
   {{- with $gw.metadata }}
   {{- with .annotations }}
-  annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- with .labels }}
@@ -19,13 +20,11 @@ metadata:
   {{- end }}
 spec:
   gatewayClassName: {{ $gw.gatewayClassName }}
-  {{- if (include "gateway-api.gatewayConfig.enabled" $) }}
   infrastructure:
     parametersRef:
       group: ""
       kind: ConfigMap
-      name: {{ $.Values.disconnected.gatewayConfig.name }}
-  {{- end }}
+      name: {{ include "gateway-api.gatewayConfig.name" $ }}
   listeners:
     {{- range $lname, $listener := $gw.listeners }}
     {{- if $listener }}
@@ -41,8 +40,7 @@ spec:
       {{- if $listener.allowedRoutes }}
         {{- toYaml $listener.allowedRoutes | nindent 8 }}
       {{- else }}
-        namespaces:
-          from: All
+        {{- include "gateway-api.defaultAllowedRoutes" $ | nindent 8 }}
       {{- end }}
     {{- end }}
     {{- end }}

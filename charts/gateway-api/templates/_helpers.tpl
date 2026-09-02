@@ -1,6 +1,17 @@
-{{- define "gateway-api.gatewayConfig.enabled" -}}
+{{- define "gateway-api.gatewayConfig.name" -}}
 {{- $gc := .Values.disconnected.gatewayConfig | default dict -}}
-{{- if or $gc.serviceType $gc.servingCertSecretName (and .Values.disconnected.enabled $gc.wasmInsecureRegistries) -}}
-true
+{{- default "maas-gateway-options" $gc.name -}}
 {{- end -}}
+
+{{- define "gateway-api.gatewayConfig.namespace" -}}
+{{- $gc := .Values.disconnected.gatewayConfig | default dict -}}
+{{- default "openshift-ingress" $gc.namespace -}}
+{{- end -}}
+
+{{- define "gateway-api.defaultAllowedRoutes" -}}
+namespaces:
+  from: Selector
+  selector:
+    matchLabels:
+      maas.opendatahub.io/gateway-access: "true"
 {{- end -}}

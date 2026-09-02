@@ -23,6 +23,13 @@ authorino:
   overwrite: true
   serviceTls: true
   certSecretName: authorino-server-cert
+  # Outbound HTTPS to maas-api (service-ca). Authorino CR has no envVars.
+  caBundle:
+    enabled: true
+    deployment: authorino
+    sslCertFile: /etc/ssl/certs/openshift-service-ca/service-ca-bundle.crt
+    configMapName: openshift-service-ca.crt
+    volumeName: openshift-service-ca
   spec:
     clusterWide: true
     healthz: {}

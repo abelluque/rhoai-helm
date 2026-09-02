@@ -58,7 +58,7 @@ El overlay OpenTLC todavía plantilla hostnames `maas.apps.cluster-6f7dh…`. El
                                     │ HTTPS
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Capa de plataforma e ingreso                                             │
-│  OpenShift Router  →  Route reencrypt  →  Gateway (Istio dataplane)      │
+│  OpenShift Router  →  Route passthrough  →  Gateway (Istio dataplane)    │
 │  cert-manager · GitOps · Pipelines · User Workload Monitoring            │
 └──────────────────────────────────────────────────────────────────────────┘
                                     │
@@ -123,13 +123,15 @@ En el lab vive un único ISVC: `granite-3-1-2b-instruct` (URI `hf://ibm-granite/
 
 | Pieza | Dónde | Función |
 | --- | --- | --- |
-| Red Hat Connectivity Link (`rhcl`) | `kuadrant-system` | Operador Kuadrant + Authorino + Limitador + plugin de consola. Job `patch-rhcl-csv` añade `openshift.io/gateway-controller/v1` a `ISTIO_GATEWAY_CONTROLLER_NAMES`. |
+| Red Hat Connectivity Link (`rhcl`) | `kuadrant-system` | Operador Kuadrant + Authorino + Limitador + plugin de consola. Job `patch-rhcl-csv` añade `openshift.io/gateway-controller/v1` a `ISTIO_GATEWAY_CONTROLLER_NAMES`. Job `patch-authorino-ca` fija `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` con el service-ca. |
 | `Kuadrant` CR | `kuadrant-system` | Instancia Authorino + Limitador. Pods `authorino-*`, `limitador-limitador-*`. |
-| Gateway `maas-default-gateway` | `openshift-ingress` | Listener HTTPS:443, `allowedRoutes.from: All`, TLS Terminate contra Secret `maas-gw-service-tls`. |
-| Route `maas-default-gateway` | `openshift-ingress` | HAProxy reencrypt, timeout 10m, hacia Service `maas-default-gateway-openshift-default:443`. |
+| Gateway `maas-default-gateway` | `openshift-ingress` | Listener HTTPS:443, `allowedRoutes` por label `maas.opendatahub.io/gateway-access=true`, TLS Terminate contra el cert wildcard de ingress (`router-certs-default`). ConfigMap `maas-gateway-options` (istio-proxy 2Gi). |
+| Route `maas-default-gateway` | `openshift-ingress` | HAProxy **passthrough**, timeout 10m, hacia Service ClusterIP `maas-default-gateway-openshift-default:https`. |
 | Gateway `data-science-gateway` | `openshift-ingress` | Gateway del dashboard RHOAI (`data-science-gateway-class`), no el path MaaS. |
-| `maas-api` | `redhat-ods-applications` | Emite y valida API keys; selecciona suscripción. Postgres vía Secret `maas-db-config`. |
+| `maas-api` | `redhat-ods-applications` | Emite y valida API keys; selecciona suscripción. Postgres vía Secret `maas-db-config`. El NS lleva `maas.opendatahub.io/gateway-access=true` (Job `label-gateway-access`) para que su HTTPRoute se adhiera al Gateway. |
 | `MaaSAuthPolicy` / `MaaSSubscription` / `MaaSModelRef` | `models-as-a-service` | CRs de producto. El `maas-controller` materializa AuthPolicy y TokenRateLimitPolicy de Kuadrant. |
+
+Los namespaces `ai-models` y `redhat-ods-applications` llevan `maas.opendatahub.io/gateway-access=true` para que las HTTPRoutes se adhieran al Gateway.
 
 En el lab: `MaaSAuthPolicy/free-models-access` y `MaaSSubscription/free-models-subscription` (Ready). El controlador genera:
 
@@ -141,7 +143,7 @@ En el lab: `MaaSAuthPolicy/free-models-access` y `MaaSSubscription/free-models-s
 ### 2.5 Flujo de tráfico: del usuario al modelo
 
 1. El cliente llama `https://maas.apps.<cluster>.<baseDomain>/ai-models/granite-3-1-2b-instruct/v1/chat/completions` con `Authorization: Bearer sk-oai-…`.
-2. El **OpenShift Router** termina TLS de borde (reencrypt) y envía al Service ClusterIP del Gateway.
+2. El **OpenShift Router** hace passthrough TLS (no termina) y envía al Service ClusterIP del Gateway, que termina TLS con el certificado wildcard `*.apps`.
 3. El **dataplane Istio** del Gateway (`openshift-gateway`) aplica el WASM de Kuadrant (AuthPolicy + TokenRateLimitPolicy) **antes** del routing.
 4. **Authorino** (ext-authz):
    - Si el header coincide con `^Bearer sk-oai-.*`, POST a `https://maas-api.redhat-ods-applications.svc:8443/internal/v1/api-keys/validate`.
@@ -172,7 +174,7 @@ flowchart TB
 
   subgraph edge [Borde OpenShift]
     router[Router HAProxy]
-    routeGw["Route maas-default-gateway reencrypt"]
+    routeGw["Route maas-default-gateway passthrough"]
     routeDs["Route data-science-gateway"]
   end
 

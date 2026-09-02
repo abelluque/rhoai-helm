@@ -1,22 +1,36 @@
-{{- if (include "gateway-api.gatewayConfig.enabled" .) }}
-{{- $gc := .Values.disconnected.gatewayConfig }}
+{{- $gc := .Values.disconnected.gatewayConfig | default dict }}
+{{- $proxy := $gc.istioProxy | default dict }}
+{{- $resources := $proxy.resources | default dict }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ $gc.name }}
-  namespace: {{ $gc.namespace }}
+  name: {{ include "gateway-api.gatewayConfig.name" . }}
+  namespace: {{ include "gateway-api.gatewayConfig.namespace" . }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
 data:
-  {{- if and $.Values.disconnected.enabled $gc.wasmInsecureRegistries }}
   deployment: |
     spec:
       template:
         spec:
           containers:
           - name: istio-proxy
+            resources:
+{{- if $resources }}
+{{- toYaml $resources | nindent 14 }}
+{{- else }}
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: "2"
+                memory: 2Gi
+{{- end }}
+            {{- if and $.Values.disconnected.enabled $gc.wasmInsecureRegistries }}
             env:
             - name: WASM_INSECURE_REGISTRIES
               value: {{ $gc.wasmInsecureRegistries | quote }}
-  {{- end }}
+            {{- end }}
   {{- if or $gc.serviceType $gc.servingCertSecretName }}
   service: |
     {{- if $gc.servingCertSecretName }}
@@ -27,4 +41,3 @@ data:
     spec:
       type: {{ $gc.serviceType | default "ClusterIP" }}
   {{- end }}
-{{- end }}

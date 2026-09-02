@@ -8,6 +8,8 @@ namespace:
   labels:
     kubernetes.io/metadata.name: ai-models
     opendatahub.io/dashboard: "true"
+    opendatahub.io/generated-namespace: "true"
+    maas.opendatahub.io/gateway-access: "true"
 
 fullnameOverride: ""
 displaynameOverride: ""

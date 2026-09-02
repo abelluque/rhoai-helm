@@ -1,13 +1,15 @@
-# Same pattern as data-science-gateway: ClusterIP :443 + Route reencrypt
-# through router-default (the apps wildcard ELB that already has :443).
+# ClusterIP + passthrough Route through router-default (the apps wildcard).
 # Do not use a public LoadBalancer :80 — https://maas.apps...:443 never
-# reaches that ELB and times out.
+# reaches that ELB and times out. TLS is terminated on the Gateway with the
+# IngressController wildcard cert (router-certs-default).
 disconnected:
   gatewayConfig:
-    name: default-gateway-config
+    name: maas-gateway-options
     namespace: openshift-ingress
     serviceType: ClusterIP
-    servingCertSecretName: maas-gw-service-tls
+
+ingressCertificate:
+  secretName: router-certs-default
 
 gateways:
   maas-default-gateway:
@@ -19,22 +21,20 @@ gateways:
         protocol: HTTPS
         certificate:
           create: false
-          secretName: maas-gw-service-tls
+          secretName: router-certs-default
         tls:
           mode: Terminate
           certificateRefs:
             - group: ""
               kind: Secret
-              name: maas-gw-service-tls
+              name: router-certs-default
 
 route:
   create: true
   name: maas-default-gateway
   timeout: 10m
   forwardedHeaders: append
-  targetPort: 443
-  annotations:
-    router.openshift.io/service-ca-certificate: "true"
+  targetPort: https
   tls:
-    termination: reencrypt
+    termination: passthrough
     insecureEdgeTerminationPolicy: Redirect

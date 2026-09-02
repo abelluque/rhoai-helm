@@ -1,5 +1,12 @@
 namespace: redhat-ods-applications
 
+# Label redhat-ods-applications so HTTPRoutes (maas-api) can attach to the
+# Gateway allowedRoutes selector. The Namespace is not owned by this chart.
+gatewayAccess:
+  label: true
+  labelKey: maas.opendatahub.io/gateway-access
+  labelValue: "true"
+
 global:
   toolsImage: image-registry.openshift-image-registry.svc:5000/openshift/tools:latest
 
