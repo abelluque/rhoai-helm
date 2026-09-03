@@ -26,8 +26,8 @@ require_oc() {
 warn_if_wrong_cluster() {
   local ctx
   ctx="$(oc config current-context 2>/dev/null || true)"
-  if [[ "${ctx}" != *cluster-6f7dh* && "${ctx}" != *sandbox3519* ]]; then
-    echo "WARNING: current context '${ctx}' does not look like cluster-6f7dh / sandbox3519." >&2
+  if [[ "${ctx}" != *cluster-zd9hr* && "${ctx}" != *sandbox1414* ]]; then
+    echo "WARNING: current context '${ctx}' does not look like cluster-zd9hr / sandbox1414." >&2
     echo "Set CONFIRM_WRONG_CLUSTER=1 to continue anyway." >&2
     if [[ "${CONFIRM_WRONG_CLUSTER:-}" != "1" ]]; then
       exit 1

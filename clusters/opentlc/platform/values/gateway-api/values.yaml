@@ -1,7 +1,7 @@
 # ClusterIP + passthrough Route through router-default (the apps wildcard).
 # Do not use a public LoadBalancer :80 — https://maas.apps...:443 never
 # reaches that ELB and times out. TLS is terminated on the Gateway with the
-# IngressController wildcard cert (router-certs-default).
+# IngressController wildcard cert (this lab uses cert-manager-ingress-cert).
 disconnected:
   gatewayConfig:
     name: maas-gateway-options
@@ -9,7 +9,7 @@ disconnected:
     serviceType: ClusterIP
 
 ingressCertificate:
-  secretName: router-certs-default
+  secretName: cert-manager-ingress-cert
 
 gateways:
   maas-default-gateway:
@@ -21,13 +21,13 @@ gateways:
         protocol: HTTPS
         certificate:
           create: false
-          secretName: router-certs-default
+          secretName: cert-manager-ingress-cert
         tls:
           mode: Terminate
           certificateRefs:
             - group: ""
               kind: Secret
-              name: router-certs-default
+              name: cert-manager-ingress-cert
 
 route:
   create: true

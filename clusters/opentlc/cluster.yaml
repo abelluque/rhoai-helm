@@ -1,8 +1,8 @@
 global:
   cluster:
-    # From console: https://console-openshift-console.apps.cluster-6f7dh.6f7dh.sandbox3519.opentlc.com/
-    name: cluster-6f7dh
-    baseDomain: 6f7dh.sandbox3519.opentlc.com
+    # From console: https://console-openshift-console.apps.cluster-zd9hr.zd9hr.sandbox1414.opentlc.com/
+    name: cluster-zd9hr
+    baseDomain: zd9hr.sandbox1414.opentlc.com
   toolsImage: image-registry.openshift-image-registry.svc:5000/openshift/tools:latest
 
 # Connected OpenTLC lab — do not enable disconnected WASM workarounds.
