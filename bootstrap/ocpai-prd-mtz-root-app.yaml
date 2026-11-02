@@ -1,0 +1,34 @@
+# Apply as cluster-admin. The ClusterRoleBinding must exist before the
+# application-controller can reconcile privileged namespaces:
+#   oc apply -f bootstrap/gitops-controller-cluster-admin.yaml
+#   oc apply -f bootstrap/ocpai-prd-mtz-root-app.yaml
+# Then Argo CD syncs clusters/ocpai-prd-mtz/apps (the app-of-apps).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rhoai-ocpai-prd-mtz-root
+  namespace: openshift-gitops
+  labels:
+    app.kubernetes.io/part-of: rhoai-maas
+    rhoai.example.com/cluster: ocpai-prd-mtz
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/surtecnologias/rhoai-gitops.git
+    targetRevision: main
+    path: clusters/ocpai-prd-mtz/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: openshift-gitops
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 5m

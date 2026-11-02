@@ -1,0 +1,26 @@
+# Source: platform-addons/templates/modelregistry.yaml
+# Applied after OpenShift AI (wave 5) publishes ModelRegistry CRDs.
+apiVersion: modelregistry.opendatahub.io/v1beta1
+kind: ModelRegistry
+metadata:
+  name: rhoai-registry
+  namespace: rhoai-model-registries
+  labels:
+    app.kubernetes.io/name: platform-addons
+    app.kubernetes.io/instance: platform-addons
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  grpc: {}
+  rest: {}
+  kubeRBACProxy: {}
+  mysql:
+    host: model-registry-mysql
+    port: 3306
+    database: "modelregistry"
+    username: "mlmduser"
+    skipDBCreation: false
+    passwordSecret:
+      name: model-registry-mysql
+      key: database-password

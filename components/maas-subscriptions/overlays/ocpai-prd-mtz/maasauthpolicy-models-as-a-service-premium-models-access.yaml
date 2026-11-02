@@ -1,0 +1,27 @@
+# Source: maas-subscriptions/templates/maasauthpolicy-custom.yaml
+apiVersion: maas.opendatahub.io/v1alpha1
+kind: MaaSAuthPolicy
+metadata:
+  name: "premium-models-access"
+  namespace: "models-as-a-service"
+  labels:
+    migration.maas.opendatahub.io/from-tier: "premium"
+    migration.maas.opendatahub.io/generated: "true"
+  annotations:
+    migration.maas.opendatahub.io/original-tier: "premium"
+    description: "Access policy for Qwen2.5-Coder and DeepSeek-Coder (premium tier)"
+spec:
+  modelRefs:
+  - name: "qwen25-coder-32b"
+    namespace: "ai-models"
+  - name: "deepseek-coder-33b"
+    namespace: "ai-models"
+  - name: "qwen25-72b"
+    namespace: "ai-models"
+  - name: "granite-3-0-8b-instruct"
+    namespace: "ai-models-dev"
+  subjects:
+    groups:
+    - name: "system:authenticated"
+    - name: "premium-users"
+    users: []
